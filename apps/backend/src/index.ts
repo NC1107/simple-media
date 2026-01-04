@@ -340,17 +340,27 @@ const start = async () => {
     fastify.log.info(`Initializing database at ${dbPath}`)
     await initDatabase(dbPath)
     
-    // Perform initial scan
-    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
-    const moviesPath = process.env.MOVIES_PATH || '/movies'
-    const booksPath = process.env.BOOKS_PATH || '/books'
-    
-    fastify.log.info('Performing initial media scan...')
-    const scanResults = await scanAllMedia(tvPath, moviesPath, booksPath)
-    fastify.log.info(`Initial scan: TV ${scanResults.tvShows.added}/${scanResults.tvShows.updated}, Movies ${scanResults.movies.added}/${scanResults.movies.updated}, Books ${scanResults.books.added}/${scanResults.books.updated}`)
-    
+    // Start server first, then optionally perform initial scan in background
     await fastify.listen({ port: 3001, host: '0.0.0.0' })
     console.log('Server running on http://localhost:3001')
+    
+    // Perform initial scan in background (non-blocking)
+    if (process.env.SKIP_INITIAL_SCAN !== 'true') {
+      const tvPath = process.env.TV_SHOWS_PATH || '/tv'
+      const moviesPath = process.env.MOVIES_PATH || '/movies'
+      const booksPath = process.env.BOOKS_PATH || '/books'
+      
+      fastify.log.info('Performing initial media scan in background...')
+      scanAllMedia(tvPath, moviesPath, booksPath)
+        .then((scanResults) => {
+          fastify.log.info(`Initial scan completed: TV ${scanResults.tvShows.added}/${scanResults.tvShows.updated}, Movies ${scanResults.movies.added}/${scanResults.movies.updated}, Books ${scanResults.books.added}/${scanResults.books.updated}`)
+        })
+        .catch((err) => {
+          fastify.log.error(err, 'Initial scan failed')
+        })
+    } else {
+      fastify.log.info('Skipping initial media scan (SKIP_INITIAL_SCAN=true)')
+    }
   } catch (err) {
     fastify.log.error(err)
     process.exit(1)

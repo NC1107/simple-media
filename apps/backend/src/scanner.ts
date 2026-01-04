@@ -23,6 +23,14 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
   const now = Date.now()
   
   try {
+    // Check if directory exists
+    try {
+      await fs.access(tvShowsPath)
+    } catch {
+      console.log(`TV shows directory does not exist: ${tvShowsPath}`)
+      return result
+    }
+    
     const shows = await fs.readdir(tvShowsPath, { withFileTypes: true })
     
     for (const showEntry of shows) {
@@ -100,6 +108,14 @@ export async function scanMovies(moviesPath: string): Promise<ScanResult> {
   const now = Date.now()
   
   try {
+    // Check if directory exists
+    try {
+      await fs.access(moviesPath)
+    } catch {
+      console.log(`Movies directory does not exist: ${moviesPath}`)
+      return result
+    }
+    
     const entries = await fs.readdir(moviesPath, { withFileTypes: true })
     
     for (const entry of entries) {
@@ -200,6 +216,14 @@ export async function scanBooks(booksPath: string): Promise<ScanResult> {
   const now = Date.now()
   
   try {
+    // Check if directory exists
+    try {
+      await fs.access(booksPath)
+    } catch {
+      console.log(`Books directory does not exist: ${booksPath}`)
+      return result
+    }
+    
     const entries = await fs.readdir(booksPath, { withFileTypes: true })
     
     for (const entry of entries) {
