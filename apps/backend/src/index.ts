@@ -1,7 +1,8 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
-import fs from 'fs/promises'
 import path from 'path'
+import { initDatabase, getMediaItemsByType, getMediaItemByPath, getTVEpisodesBySeason, getMediaStats } from './db.js'
+import { scanAllMedia } from './scanner.js'
 
 const fastify = Fastify({
   logger: true
@@ -20,32 +21,19 @@ fastify.get('/api/health', async (request, reply) => {
 // Get TV shows from media directory
 fastify.get('/api/tv-shows', async (request, reply) => {
   try {
-    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
+    const shows = await getMediaItemsByType('tv_show')
     
-    // Check if directory exists
-    try {
-      await fs.access(tvPath)
-    } catch {
-      return { shows: [], message: 'TV directory not configured or not accessible' }
+    return { 
+      shows: shows.map(show => ({
+        id: show.path,
+        name: show.title,
+        path: show.path
+      })),
+      total: shows.length 
     }
-
-    // Read directory contents
-    const entries = await fs.readdir(tvPath, { withFileTypes: true })
-    
-    // Filter for directories only and map to show objects
-    const shows = entries
-      .filter(entry => entry.isDirectory())
-      .map(entry => ({
-        id: entry.name,
-        name: entry.name,
-        path: path.join(tvPath, entry.name)
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-
-    return { shows, total: shows.length }
   } catch (error) {
     fastify.log.error(error)
-    return reply.status(500).send({ error: 'Failed to read TV shows directory' })
+    return reply.status(500).send({ error: 'Failed to read TV shows' })
   }
 })
 
@@ -53,39 +41,36 @@ fastify.get('/api/tv-shows', async (request, reply) => {
 fastify.get('/api/tv-shows/:showId/seasons', async (request, reply) => {
   try {
     const { showId } = request.params as { showId: string }
-    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
-    const showPath = path.join(tvPath, showId)
     
-    // Check if show directory exists
-    try {
-      await fs.access(showPath)
-    } catch {
+    // Get the show from database
+    const show = await getMediaItemByPath(showId)
+    if (!show) {
       return { seasons: [], message: 'TV show not found' }
     }
-
-    // Read show directory contents
-    const entries = await fs.readdir(showPath, { withFileTypes: true })
     
-    // Filter for season directories
-    const seasons = entries
-      .filter(entry => entry.isDirectory())
-      .filter(entry => /season\s*\d+/i.test(entry.name))
-      .map(entry => {
-        const match = entry.name.match(/season\s*(\d+)/i)
-        const seasonNumber = match ? parseInt(match[1]) : 0
-        return {
-          id: entry.name,
-          name: entry.name,
-          seasonNumber,
-          path: path.join(showPath, entry.name)
-        }
-      })
-      .sort((a, b) => a.seasonNumber - b.seasonNumber)
-
+    // Get all episodes for this show and extract unique seasons
+    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
+    const episodes = await getTVEpisodesBySeason(show.id!, 0) // Get all episodes
+    
+    // Group by season number
+    const seasonMap = new Map<number, any>()
+    for (const episode of episodes) {
+      if (!seasonMap.has(episode.season_number)) {
+        seasonMap.set(episode.season_number, {
+          id: `Season ${episode.season_number}`,
+          name: `Season ${episode.season_number}`,
+          seasonNumber: episode.season_number,
+          path: path.join(tvPath, showId, `Season ${episode.season_number}`)
+        })
+      }
+    }
+    
+    const seasons = Array.from(seasonMap.values()).sort((a, b) => a.seasonNumber - b.seasonNumber)
+    
     return { seasons, total: seasons.length }
   } catch (error) {
     fastify.log.error(error)
-    return reply.status(500).send({ error: 'Failed to read seasons directory' })
+    return reply.status(500).send({ error: 'Failed to read seasons' })
   }
 })
 
@@ -93,147 +78,80 @@ fastify.get('/api/tv-shows/:showId/seasons', async (request, reply) => {
 fastify.get('/api/tv-shows/:showId/seasons/:seasonId/episodes', async (request, reply) => {
   try {
     const { showId, seasonId } = request.params as { showId: string, seasonId: string }
-    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
-    const seasonPath = path.join(tvPath, showId, seasonId)
     
-    // Check if season directory exists
-    try {
-      await fs.access(seasonPath)
-    } catch {
-      return { episodes: [], message: 'Season not found' }
+    // Parse season number from seasonId (e.g., "Season 1" -> 1)
+    const seasonMatch = seasonId.match(/(\d+)/)
+    const seasonNumber = seasonMatch ? parseInt(seasonMatch[1]) : 0
+    
+    // Get the show from database
+    const show = await getMediaItemByPath(showId)
+    if (!show) {
+      return { episodes: [], message: 'TV show not found' }
     }
-
-    // Read season directory contents
-    const entries = await fs.readdir(seasonPath, { withFileTypes: true })
     
-    // Filter for video files
-    const videoExtensions = ['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm']
-    const episodes = entries
-      .filter(entry => entry.isFile())
-      .filter(entry => videoExtensions.some(ext => entry.name.toLowerCase().endsWith(ext)))
-      .map(entry => {
-        // Try to parse episode number from filename (e.g., S01E01, 1x01, etc.)
-        const epMatch = entry.name.match(/[SE](\d+)[EX](\d+)/i) || entry.name.match(/(\d+)x(\d+)/i)
-        const episodeNumber = epMatch ? parseInt(epMatch[2]) : 0
-        
-        // Get file stats
-        const fullPath = path.join(seasonPath, entry.name)
-        
-        return {
-          id: entry.name,
-          name: entry.name,
-          episodeNumber,
-          path: fullPath,
-          extension: path.extname(entry.name)
-        }
-      })
-      .sort((a, b) => a.episodeNumber - b.episodeNumber || a.name.localeCompare(b.name))
-
-    return { episodes, total: episodes.length }
+    // Get episodes for this season
+    const episodes = await getTVEpisodesBySeason(show.id!, seasonNumber)
+    
+    return { 
+      episodes: episodes.map(ep => ({
+        id: ep.file_path,
+        name: ep.title,
+        episodeNumber: ep.episode_number,
+        path: ep.file_path,
+        fileSize: ep.file_size
+      })),
+      total: episodes.length 
+    }
   } catch (error) {
     fastify.log.error(error)
-    return reply.status(500).send({ error: 'Failed to read episodes directory' })
+    return reply.status(500).send({ error: 'Failed to read episodes' })
   }
 })
 
 // Get movies from media directory
 fastify.get('/api/movies', async (request, reply) => {
   try {
-    const moviesPath = process.env.MOVIES_PATH || '/movies'
+    const movies = await getMediaItemsByType('movie')
     
-    // Check if directory exists
-    try {
-      await fs.access(moviesPath)
-    } catch {
-      return { movies: [], message: 'Movies directory not configured or not accessible' }
+    return { 
+      movies: movies.map(movie => ({
+        id: movie.path,
+        name: movie.title,
+        path: movie.path,
+        fileSize: movie.file_size
+      })),
+      total: movies.length 
     }
-
-    // Read directory contents
-    const entries = await fs.readdir(moviesPath, { withFileTypes: true })
-    
-    // Filter for directories only and map to movie objects
-    const movies = entries
-      .filter(entry => entry.isDirectory())
-      .map(entry => ({
-        id: entry.name,
-        name: entry.name,
-        path: path.join(moviesPath, entry.name)
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-
-    return { movies, total: movies.length }
   } catch (error) {
     fastify.log.error(error)
-    return reply.status(500).send({ error: 'Failed to read movies directory' })
+    return reply.status(500).send({ error: 'Failed to read movies' })
   }
 })
 
 // Get books from media directory
 fastify.get('/api/books', async (request, reply) => {
   try {
-    const booksPath = process.env.BOOKS_PATH || '/books'
+    const books = await getMediaItemsByType('book')
     
-    // Check if directory exists
-    try {
-      await fs.access(booksPath)
-    } catch {
-      return { books: [], message: 'Books directory not configured or not accessible' }
+    return { 
+      books: books.map(book => ({
+        id: book.path,
+        name: book.title,
+        path: book.path,
+        fileSize: book.file_size
+      })),
+      total: books.length 
     }
-
-    // Read directory contents
-    const entries = await fs.readdir(booksPath, { withFileTypes: true })
-    
-    // Filter for directories only and map to book objects
-    const books = entries
-      .filter(entry => entry.isDirectory())
-      .map(entry => ({
-        id: entry.name,
-        name: entry.name,
-        path: path.join(booksPath, entry.name)
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-
-    return { books, total: books.length }
   } catch (error) {
     fastify.log.error(error)
-    return reply.status(500).send({ error: 'Failed to read books directory' })
+    return reply.status(500).send({ error: 'Failed to read books' })
   }
 })
 
 // Dashboard stats endpoint
 fastify.get('/api/stats', async (request, reply) => {
   try {
-    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
-    const moviesPath = process.env.MOVIES_PATH || '/movies'
-    const booksPath = process.env.BOOKS_PATH || '/books'
-
-    const stats = {
-      tvShows: 0,
-      movies: 0,
-      books: 0
-    }
-
-    // Count TV shows
-    try {
-      await fs.access(tvPath)
-      const tvEntries = await fs.readdir(tvPath, { withFileTypes: true })
-      stats.tvShows = tvEntries.filter(e => e.isDirectory()).length
-    } catch {}
-
-    // Count movies
-    try {
-      await fs.access(moviesPath)
-      const movieEntries = await fs.readdir(moviesPath, { withFileTypes: true })
-      stats.movies = movieEntries.filter(e => e.isDirectory()).length
-    } catch {}
-
-    // Count books
-    try {
-      await fs.access(booksPath)
-      const bookEntries = await fs.readdir(booksPath, { withFileTypes: true })
-      stats.books = bookEntries.filter(e => e.isDirectory()).length
-    } catch {}
-
+    const stats = await getMediaStats()
     return stats
   } catch (error) {
     fastify.log.error(error)
@@ -249,8 +167,112 @@ fastify.get('/api/media', async (request, reply) => {
   }
 })
 
+// Get scan status / info
+fastify.get('/api/scan', async (request, reply) => {
+  try {
+    const stats = await getMediaStats()
+    return {
+      database: {
+        tvShows: stats.tvShows,
+        movies: stats.movies,
+        books: stats.books
+      },
+      message: 'Use POST /api/scan to trigger a rescan'
+    }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to get scan info' })
+  }
+})
+
+// Trigger manual scan of all media directories
+fastify.post('/api/scan', async (request, reply) => {
+  try {
+    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
+    const moviesPath = process.env.MOVIES_PATH || '/movies'
+    const booksPath = process.env.BOOKS_PATH || '/books'
+    
+    fastify.log.info('Starting media scan...')
+    const results = await scanAllMedia(tvPath, moviesPath, booksPath)
+    fastify.log.info('Media scan completed')
+    
+    return { 
+      success: true,
+      results: {
+        tvShows: {
+          added: results.tvShows.added,
+          updated: results.tvShows.updated,
+          errors: results.tvShows.errors.length
+        },
+        movies: {
+          added: results.movies.added,
+          updated: results.movies.updated,
+          errors: results.movies.errors.length
+        },
+        books: {
+          added: results.books.added,
+          updated: results.books.updated,
+          errors: results.books.errors.length
+        }
+      }
+    }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to scan media directories' })
+  }
+})
+
+// Debug endpoint - Get raw database entries with metadata
+fastify.get('/api/debug/database', async (request, reply) => {
+  try {
+    const tvShows = await getMediaItemsByType('tv_show')
+    const movies = await getMediaItemsByType('movie')
+    const books = await getMediaItemsByType('book')
+    
+    return {
+      tvShows: tvShows.map(item => ({
+        ...item,
+        metadata: item.metadata_json ? JSON.parse(item.metadata_json) : null
+      })),
+      movies: movies.map(item => ({
+        ...item,
+        metadata: item.metadata_json ? JSON.parse(item.metadata_json) : null
+      })),
+      books: books.map(item => ({
+        ...item,
+        metadata: item.metadata_json ? JSON.parse(item.metadata_json) : null
+      })),
+      summary: {
+        tvShowsTotal: tvShows.length,
+        tvShowsWithMetadata: tvShows.filter(item => item.metadata_json).length,
+        moviesTotal: movies.length,
+        moviesWithMetadata: movies.filter(item => item.metadata_json).length,
+        booksTotal: books.length,
+        booksWithMetadata: books.filter(item => item.metadata_json).length
+      }
+    }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to fetch database data' })
+  }
+})
+
 const start = async () => {
   try {
+    // Initialize database
+    const dbPath = process.env.DB_PATH || './data/media.sqlite'
+    fastify.log.info(`Initializing database at ${dbPath}`)
+    await initDatabase(dbPath)
+    
+    // Perform initial scan
+    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
+    const moviesPath = process.env.MOVIES_PATH || '/movies'
+    const booksPath = process.env.BOOKS_PATH || '/books'
+    
+    fastify.log.info('Performing initial media scan...')
+    const scanResults = await scanAllMedia(tvPath, moviesPath, booksPath)
+    fastify.log.info(`Initial scan: TV ${scanResults.tvShows.added}/${scanResults.tvShows.updated}, Movies ${scanResults.movies.added}/${scanResults.movies.updated}, Books ${scanResults.books.added}/${scanResults.books.updated}`)
+    
     await fastify.listen({ port: 3001, host: '0.0.0.0' })
     console.log('Server running on http://localhost:3001')
   } catch (err) {

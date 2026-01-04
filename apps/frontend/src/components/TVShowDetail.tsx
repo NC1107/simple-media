@@ -24,7 +24,7 @@ interface Episode {
   name: string
   episodeNumber: number
   path: string
-  extension: string
+  fileSize?: number
 }
 
 export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
@@ -236,11 +236,13 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
                               <p className="text-sm font-medium text-gray-900 dark:text-white truncate" title={episode.name}>
                                 {episode.name}
                               </p>
-                              <div className="flex gap-2 mt-1">
-                                <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded">
-                                  {episode.extension.toUpperCase().replace('.', '')}
-                                </span>
-                              </div>
+                              {episode.fileSize && (
+                                <div className="flex gap-2 mt-1">
+                                  <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded">
+                                    {(episode.fileSize / (1024 * 1024 * 1024)).toFixed(2)} GB
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <button className="flex-shrink-0 p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-colors">
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">

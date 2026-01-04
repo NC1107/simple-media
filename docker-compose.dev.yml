@@ -20,18 +20,15 @@ services:
     ports:
       - "8101:3001"
     volumes:
-      - ./apps/backend:/app
-      - /app/node_modules
+      - ./apps/backend/src:/app/src
       - ./data:/app/data
       - E:\media\tv:/tv:ro
       - E:\media\movies:/movies:ro
       - E:\media\books:/books:ro
+    env_file:
+      - .env
     environment:
       - NODE_ENV=development
-      - DB_PATH=/app/data/media.sqlite
-      - TV_SHOWS_PATH=/tv
-      - MOVIES_PATH=/movies
-      - BOOKS_PATH=/books
 
 volumes:
   data:

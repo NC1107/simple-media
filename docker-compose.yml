@@ -13,10 +13,12 @@ services:
     volumes:
       - ./data:/app/data
       - /mnt/mPool/tv:/tv:ro
+      - /mnt/mPool/movies:/movies:ro
     environment:
       - NODE_ENV=production
       - DB_PATH=/app/data/media.sqlite
       - TV_SHOWS_PATH=/tv
+      - MOVIES_PATH=/movies
 
 volumes:
   data:

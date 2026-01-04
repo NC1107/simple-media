@@ -10,8 +10,9 @@
   },
   "dependencies": {
     "fastify": "^4.24.3",
-    "sqlite3": "^5.1.6",
-    "@fastify/cors": "^8.4.0"
+    "@fastify/cors": "^8.4.0",
+    "node-fetch": "^3.3.2",
+    "@libsql/client": "^0.14.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
