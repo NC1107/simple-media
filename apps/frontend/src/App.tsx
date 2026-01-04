@@ -1,13 +1,103 @@
+import { useState } from 'react'
+
 function App() {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Simple Media
-        </h1>
-        <p className="text-xl text-gray-600">
-          Lightweight media management for your home
-        </p>
+    <div className="min-h-screen bg-gray-100">
+      {/* Hamburger Button */}
+      <button
+        onClick={() => setMenuOpen(!menuOpen)}
+        className="fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg hover:bg-gray-50 transition-colors"
+      >
+        <svg
+          className="w-6 h-6 text-gray-700"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          {menuOpen ? (
+            <path d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Overlay */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Menu */}
+      <div
+        className={`fixed top-0 left-0 h-full w-full md:w-1/3 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
+          menuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="p-6">
+          {/* Logo */}
+          <div className="mb-8 flex items-center space-x-3">
+            <img
+              src="/logo.jpg"
+              alt="Simple Media Logo"
+              className="w-16 h-16 rounded-full object-cover"
+            />
+            <h2 className="text-2xl font-bold text-gray-900">Simple Media</h2>
+          </div>
+
+          {/* Menu Items */}
+          <nav className="space-y-2">
+            <a
+              href="#"
+              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Dashboard
+            </a>
+            <a
+              href="#"
+              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Books
+            </a>
+            <a
+              href="#"
+              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              TV Shows
+            </a>
+            <a
+              href="#"
+              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Movies
+            </a>
+            <a
+              href="#"
+              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Settings
+            </a>
+          </nav>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Welcome to Simple Media
+          </h1>
+          <p className="text-xl text-gray-600">
+            Click the menu to get started
+          </p>
+        </div>
       </div>
     </div>
   )
