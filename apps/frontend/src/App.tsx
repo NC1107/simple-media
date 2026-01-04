@@ -41,46 +41,46 @@ function App() {
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6">
+        <div className="p-4">
           {/* Logo */}
-          <div className="mb-8 flex items-center space-x-3">
+          <div className="mb-6 flex items-center space-x-2">
             <img
               src="/logo.jpg"
               alt="Simple Media Logo"
-              className="w-16 h-16 rounded-full object-cover"
+              className="w-12 h-12 rounded-full object-cover"
             />
-            <h2 className="text-2xl font-bold text-gray-900">Simple Media</h2>
+            <h2 className="text-xl font-bold text-gray-900">Simple Media</h2>
           </div>
 
           {/* Menu Items */}
-          <nav className="space-y-2">
+          <nav className="space-y-1">
             <a
               href="#"
-              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Dashboard
             </a>
             <a
               href="#"
-              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Books
             </a>
             <a
               href="#"
-              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
               TV Shows
             </a>
             <a
               href="#"
-              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Movies
             </a>
             <a
               href="#"
-              className="block px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
               Settings
             </a>
