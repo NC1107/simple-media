@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { API_BASE_URL } from '../config'
 
 interface MovieDetailProps {
   movieId: string
