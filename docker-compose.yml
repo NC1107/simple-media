@@ -2,14 +2,14 @@ services:
   frontend:
     image: ghcr.io/nc1107/simple-media-frontend:latest
     ports:
-      - "80:80"
+      - "8100:80"
     depends_on:
       - backend
 
   backend:
     image: ghcr.io/nc1107/simple-media-backend:latest
     ports:
-      - "3001:3001"
+      - "8101:3001"
     volumes:
       - ./data:/app/data
     environment:

@@ -42,9 +42,9 @@ npm run dev
 
 ## Access Points
 
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:3001
-- **Health Check**: http://localhost:3001/api/health
+- **Frontend**: http://localhost:8100
+- **Backend API**: http://localhost:8101
+- **Health Check**: http://localhost:8101/api/health
 
 ## Project Structure
 

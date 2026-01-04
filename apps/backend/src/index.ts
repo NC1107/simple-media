@@ -7,7 +7,7 @@ const fastify = Fastify({
 
 // Enable CORS for frontend
 await fastify.register(cors, {
-  origin: ['http://localhost:3000'] // Frontend URL
+  origin: ['http://localhost:8100'] // Frontend URL
 })
 
 // Health check endpoint

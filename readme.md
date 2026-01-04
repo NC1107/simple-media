@@ -1,10 +1,8 @@
-cj# Simple Media
-# #Summary
+# Simple Media
 
 The overall goal of this project is to create a way to manage media, in a 'lighter' way, the arr stack feels very bulky
 I understand the need for seperation at times, but I do not understand the need for a different app and setup solely for
 a different type of media.
-
 
 ## Current Goal
 
