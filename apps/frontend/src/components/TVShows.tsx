@@ -3,8 +3,8 @@ import { API_BASE_URL } from '../config'
 import { showToast } from './Toast'
 
 // Helper function to resolve image URLs (local vs remote)
-function resolveImageUrl(imagePath: string | null, showPath: string): string | null {
-  if (!imagePath) return null
+function resolveImageUrl(imagePath: string | null, showPath: string): string | undefined {
+  if (!imagePath) return undefined
   
   // If it's already a full URL, return as-is
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {

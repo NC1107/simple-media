@@ -3,6 +3,7 @@ import path from 'path'
 import { insertMediaItem, insertTVEpisode, getMediaItemByPath, getSetting } from './db.js'
 import { searchMovie, parseMovieTitle } from './tmdb.js'
 import { searchTVShow, parseTVShowTitle, getEpisodeMetadata } from './tvdb.js'
+import { saveTVShowPoster, saveEpisodeThumb } from './imageDownloader.js'
 import { saveMoviePoster, saveTVShowPoster, saveEpisodeThumb } from './imageDownloader.js'
 
 interface ScanResult {

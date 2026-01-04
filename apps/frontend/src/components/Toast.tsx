@@ -6,9 +6,9 @@ interface Toast {
   type: 'success' | 'error' | 'info' | 'warning'
 }
 
-interface ToastContextType {
-  showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
-}
+// interface ToastContextType {
+//   showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void
+// }
 
 let toastId = 0
 const toastListeners: ((toast: Toast) => void)[] = []

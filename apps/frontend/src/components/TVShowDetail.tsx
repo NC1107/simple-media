@@ -3,8 +3,8 @@ import { API_BASE_URL } from '../config'
 import { showToast } from './Toast'
 
 // Helper function to resolve image URLs (local vs remote)
-function resolveImageUrl(imagePath: string | null, showPath: string, seasonNumber?: number): string | null {
-  if (!imagePath) return null
+function resolveImageUrl(imagePath: string | null, showPath: string, seasonNumber?: number): string | undefined {
+  if (!imagePath) return undefined
   
   // If it's already a full URL, return as-is
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
@@ -168,7 +168,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
     }
   }
 
-  const handleEpisodeClick = (episode: Episode, seasonNumber: number) => {
+  const handleEpisodeClick = (episode: Episode) => {
     setSelectedEpisode(episode)
     
     // Parse existing metadata if available
@@ -425,7 +425,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
                         return (
                           <div 
                             key={episode.id} 
-                            onClick={() => handleEpisodeClick(episode, season.seasonNumber)}
+                            onClick={() => handleEpisodeClick(episode)}
                             className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                           >
                             <div className="flex items-center gap-4">
