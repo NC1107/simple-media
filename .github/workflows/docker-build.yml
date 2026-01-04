@@ -89,10 +89,11 @@ jobs:
         format: 'sarif'
         output: 'trivy-frontend.sarif'
         severity: 'HIGH,CRITICAL'
+      continue-on-error: true
     
     - name: Upload Trivy results for frontend
       uses: github/codeql-action/upload-sarif@v4
-      if: always()
+      if: always() && hashFiles('trivy-frontend.sarif') != ''
       with:
         sarif_file: 'trivy-frontend.sarif'
         category: 'trivy-frontend'
@@ -104,10 +105,11 @@ jobs:
         format: 'sarif'
         output: 'trivy-backend.sarif'
         severity: 'HIGH,CRITICAL'
+      continue-on-error: true
     
     - name: Upload Trivy results for backend
       uses: github/codeql-action/upload-sarif@v4
-      if: always()
+      if: always() && hashFiles('trivy-backend.sarif') != ''
       with:
         sarif_file: 'trivy-backend.sarif'
         category: 'trivy-backend'

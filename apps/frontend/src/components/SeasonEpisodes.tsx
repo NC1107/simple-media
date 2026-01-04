@@ -50,14 +50,6 @@ export default function SeasonEpisodes({ showId, showName, seasonId, onBack }: S
     }
   }
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
