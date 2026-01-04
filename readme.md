@@ -1,8 +1,6 @@
 # Simple Media
 
-<p align="center">
-  <img src="docs/logo.jpg" alt="Simple Media Logo" width="200"/>
-</p>
+<img src="docs/logo.jpg" alt="Simple Media Logo" width="120"/>
 
 A lightweight media management system for organizing TV shows, movies, and books.
 
