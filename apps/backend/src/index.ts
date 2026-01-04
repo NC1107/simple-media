@@ -1,8 +1,8 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import path from 'path'
-import { initDatabase, getMediaItemsByType, getMediaItemByPath, getTVEpisodesBySeason, getMediaStats, getAllSettings, setSetting, getSetting } from './db.js'
-import { scanAllMedia } from './scanner.js'
+import { initDatabase, getMediaItemsByType, getMediaItemByPath, getTVEpisodesBySeason, getMediaStats, getAllSettings, setSetting, getSetting, getDatabase } from './db.js'
+import { scanAllMedia, scanMovies, scanTVShows, scanBooks } from './scanner.js'
 import { searchMovie, parseMovieTitle } from './tmdb.js'
 
 const fastify = Fastify({
@@ -119,7 +119,8 @@ fastify.get('/api/movies', async (request, reply) => {
         id: movie.path,
         name: movie.title,
         path: movie.path,
-        fileSize: movie.file_size
+        fileSize: movie.file_size,
+        metadata: movie.metadata_json ? JSON.parse(movie.metadata_json) : null
       })),
       total: movies.length 
     }
@@ -295,6 +296,117 @@ fastify.post('/api/scan', async (request, reply) => {
   } catch (error) {
     fastify.log.error(error)
     return reply.status(500).send({ error: 'Failed to scan media directories' })
+  }
+})
+
+// Scan movies only
+fastify.post('/api/scan/movies', async (request, reply) => {
+  try {
+    const moviesPath = process.env.MOVIES_PATH || '/movies'
+    
+    fastify.log.info('Starting movies scan...')
+    const result = await scanMovies(moviesPath, false)
+    fastify.log.info('Movies scan completed')
+    
+    return { 
+      success: true,
+      added: result.added,
+      updated: result.updated,
+      errors: result.errors.length
+    }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to scan movies directory' })
+  }
+})
+
+// Scan TV shows only
+fastify.post('/api/scan/tv', async (request, reply) => {
+  try {
+    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
+    
+    fastify.log.info('Starting TV shows scan...')
+    const result = await scanTVShows(tvPath)
+    fastify.log.info('TV shows scan completed')
+    
+    return { 
+      success: true,
+      added: result.added,
+      updated: result.updated,
+      errors: result.errors.length
+    }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to scan TV shows directory' })
+  }
+})
+
+// Scan books only
+fastify.post('/api/scan/books', async (request, reply) => {
+  try {
+    const booksPath = process.env.BOOKS_PATH || '/books'
+    
+    fastify.log.info('Starting books scan...')
+    const result = await scanBooks(booksPath)
+    fastify.log.info('Books scan completed')
+    
+    return { 
+      success: true,
+      added: result.added,
+      updated: result.updated,
+      errors: result.errors.length
+    }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to scan books directory' })
+  }
+})
+
+// Clear metadata for movies
+fastify.post('/api/metadata/clear/movies', async (request, reply) => {
+  try {
+    fastify.log.info('Clearing movies metadata...')
+    const db = getDatabase()
+    const result = await db.db.execute("UPDATE media_items SET metadata_json = NULL WHERE type = 'movie'")
+    const cleared = result.rowsAffected || 0
+    fastify.log.info(`Movies metadata cleared: ${cleared} items`)
+    
+    return { success: true, cleared }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to clear movies metadata' })
+  }
+})
+
+// Clear metadata for TV shows
+fastify.post('/api/metadata/clear/tv', async (request, reply) => {
+  try {
+    fastify.log.info('Clearing TV shows metadata...')
+    const db = getDatabase()
+    const result = await db.db.execute("UPDATE media_items SET metadata_json = NULL WHERE type = 'tv_show'")
+    const cleared = result.rowsAffected || 0
+    fastify.log.info(`TV shows metadata cleared: ${cleared} items`)
+    
+    return { success: true, cleared }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to clear TV shows metadata' })
+  }
+})
+
+// Clear metadata for books
+fastify.post('/api/metadata/clear/books', async (request, reply) => {
+  try {
+    fastify.log.info('Clearing books metadata...')
+    const db = getDatabase()
+    const result = await db.db.execute("UPDATE media_items SET metadata_json = NULL WHERE type = 'book'")
+    const cleared = result.rowsAffected || 0
+    fastify.log.info(`Books metadata cleared: ${cleared} items`)
+    
+    return { success: true, cleared }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to clear books metadata' })
   }
 })
 

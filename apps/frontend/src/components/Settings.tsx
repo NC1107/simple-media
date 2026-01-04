@@ -15,6 +15,9 @@ function Settings() {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [clearingMovies, setClearingMovies] = useState(false)
+  const [clearingTV, setClearingTV] = useState(false)
+  const [clearingBooks, setClearingBooks] = useState(false)
 
   useEffect(() => {
     fetchSettings()
@@ -75,6 +78,81 @@ function Settings() {
     }
   }
 
+  const handleClearMoviesMetadata = async () => {
+    if (!confirm('Are you sure you want to clear all movie metadata? This will not delete the movies themselves.')) {
+      return
+    }
+
+    setClearingMovies(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/metadata/clear/movies`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to clear metadata')
+      }
+
+      const result = await response.json()
+      alert(`Movie metadata cleared successfully!\n\nCleared: ${result.cleared} items`)
+    } catch (error) {
+      console.error('Failed to clear movie metadata:', error)
+      alert('Failed to clear movie metadata. Please try again.')
+    } finally {
+      setClearingMovies(false)
+    }
+  }
+
+  const handleClearTVMetadata = async () => {
+    if (!confirm('Are you sure you want to clear all TV show metadata? This will not delete the shows themselves.')) {
+      return
+    }
+
+    setClearingTV(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/metadata/clear/tv`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to clear metadata')
+      }
+
+      const result = await response.json()
+      alert(`TV show metadata cleared successfully!\n\nCleared: ${result.cleared} items`)
+    } catch (error) {
+      console.error('Failed to clear TV metadata:', error)
+      alert('Failed to clear TV metadata. Please try again.')
+    } finally {
+      setClearingTV(false)
+    }
+  }
+
+  const handleClearBooksMetadata = async () => {
+    if (!confirm('Are you sure you want to clear all book metadata? This will not delete the books themselves.')) {
+      return
+    }
+
+    setClearingBooks(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/metadata/clear/books`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to clear metadata')
+      }
+
+      const result = await response.json()
+      alert(`Book metadata cleared successfully!\n\nCleared: ${result.cleared} items`)
+    } catch (error) {
+      console.error('Failed to clear book metadata:', error)
+      alert('Failed to clear book metadata. Please try again.')
+    } finally {
+      setClearingBooks(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-8">
@@ -119,6 +197,19 @@ function Settings() {
                 />
               </button>
             </div>
+
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={handleClearMoviesMetadata}
+                disabled={clearingMovies}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {clearingMovies ? 'Clearing...' : 'Clear Movie Metadata'}
+              </button>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                Remove all metadata for movies. The movie files will remain in your library.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -152,6 +243,19 @@ function Settings() {
                 />
               </button>
             </div>
+
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={handleClearTVMetadata}
+                disabled={clearingTV}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {clearingTV ? 'Clearing...' : 'Clear TV Show Metadata'}
+              </button>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                Remove all metadata for TV shows. The show files will remain in your library.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -184,6 +288,19 @@ function Settings() {
                   }`}
                 />
               </button>
+            </div>
+
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={handleClearBooksMetadata}
+                disabled={clearingBooks}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {clearingBooks ? 'Clearing...' : 'Clear Book Metadata'}
+              </button>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                Remove all metadata for books. The book files will remain in your library.
+              </p>
             </div>
           </div>
         </div>

@@ -78,16 +78,16 @@ export async function searchMovie(title: string, year?: string): Promise<MovieMe
     }
 
     const data = await response.json() as TMDBSearchResponse
-    console.log(`📡 TMDB returned ${data.results.length} results`)
+    console.log(`TMDB returned ${data.results.length} results`)
 
     if (data.results.length === 0) {
-      console.log(`⚠️ No TMDB results for "${title}"`)
+      console.log(`No TMDB results for "${title}"`)
       return null
     }
 
     // Take the first result (most relevant)
     const movie = data.results[0]
-    console.log(`✅ Found: ${movie.title} (${movie.release_date?.split('-')[0]}) - TMDB ID: ${movie.id}`)
+    console.log(`Found: ${movie.title} (${movie.release_date?.split('-')[0]}) - TMDB ID: ${movie.id}`)
 
     return {
       tmdb_id: movie.id,

@@ -21,6 +21,7 @@ export default function Books({ onBookSelect }: BooksProps) {
   const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [scanning, setScanning] = useState(false)
 
   useEffect(() => {
     fetchBooks()
@@ -41,6 +42,30 @@ export default function Books({ onBookSelect }: BooksProps) {
       console.error(err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleScan = async () => {
+    setScanning(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/scan/books`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error('Scan failed')
+      }
+
+      const result = await response.json()
+      alert(`Books scan completed!\n\nAdded: ${result.added}\nUpdated: ${result.updated}`)
+      
+      // Refresh the books list
+      await fetchBooks()
+    } catch (error) {
+      console.error('Books scan failed:', error)
+      alert('Failed to scan books. Check console for details.')
+    } finally {
+      setScanning(false)
     }
   }
 
@@ -72,9 +97,18 @@ export default function Books({ onBookSelect }: BooksProps) {
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-        Books ({books.length})
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Books ({books.length})
+        </h2>
+        <button
+          onClick={handleScan}
+          disabled={scanning}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+        >
+          {scanning ? 'Scanning...' : 'Scan Books'}
+        </button>
+      </div>
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {books.map((book) => (

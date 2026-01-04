@@ -9,6 +9,7 @@ interface MovieData {
   id: string
   name: string
   path: string
+  metadata?: MovieMetadata | null
 }
 
 interface MovieMetadata {
@@ -39,6 +40,9 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
       const data = await response.json()
       const foundMovie = data.movies.find((m: MovieData) => m.id === movieId)
       setMovie(foundMovie || null)
+      if (foundMovie?.metadata) {
+        setMetadata(foundMovie.metadata)
+      }
     } catch (err) {
       console.error('Failed to fetch movie details:', err)
     } finally {
