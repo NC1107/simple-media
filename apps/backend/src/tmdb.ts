@@ -8,7 +8,7 @@ const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p'
 const RATE_LIMIT_DELAY = 250 // milliseconds
 let lastRequestTime = 0
 
-async function rateLimitedFetch(url: string): Promise<Response> {
+async function rateLimitedFetch(url: string) {
   const now = Date.now()
   const timeSinceLastRequest = now - lastRequestTime
   

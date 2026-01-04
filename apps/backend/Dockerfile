@@ -4,18 +4,25 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci
-
-# Copy source
-COPY . .
 
 # Development stage
 FROM base as dev
+RUN npm ci
+COPY . .
 EXPOSE 3001
 CMD ["npm", "run", "dev"]
 
-# Production stage
-FROM base as prod
+# Build stage
+FROM base as build
+RUN npm ci
+COPY . .
 RUN npm run build
+
+# Production stage
+FROM node:18-alpine as prod
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY --from=build /app/dist ./dist
 EXPOSE 3001
-CMD ["npm", "start"]
+CMD ["node", "dist/index.js"]

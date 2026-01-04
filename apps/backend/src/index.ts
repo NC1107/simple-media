@@ -168,7 +168,7 @@ fastify.get('/api/settings', async (request, reply) => {
     fastify.log.info('Settings fetched successfully')
     return settings
   } catch (error) {
-    fastify.log.error('Failed to fetch settings', error)
+    fastify.log.error(error, 'Failed to fetch settings')
     return reply.status(500).send({ error: 'Failed to fetch settings' })
   }
 })
@@ -187,7 +187,7 @@ fastify.post('/api/settings', async (request, reply) => {
     
     return { success: true, key, value }
   } catch (error) {
-    fastify.log.error('Failed to update setting', error)
+    fastify.log.error(error, 'Failed to update setting')
     return reply.status(500).send({ error: 'Failed to update setting' })
   }
 })
@@ -230,7 +230,7 @@ fastify.post('/api/movies/:movieId/metadata', async (request, reply) => {
     
     return { success: true, metadata }
   } catch (error) {
-    fastify.log.error('Failed to fetch movie metadata', error)
+    fastify.log.error(error, 'Failed to fetch movie metadata')
     return reply.status(500).send({ error: 'Failed to fetch metadata' })
   }
 })
