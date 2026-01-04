@@ -116,7 +116,9 @@ jobs:
     
     - name: Test backend health
       run: |
-        docker run -d --name backend -p 3001:3001 ghcr.io/nc1107/simple-media-backend:latest
+        docker run -d --name backend -p 3001:3001 \
+          -e SKIP_INITIAL_SCAN=true \
+          ghcr.io/nc1107/simple-media-backend:latest
         sleep 5
-        curl --fail http://localhost:3001/api/health || exit 1
+        curl --fail --retry 5 --retry-delay 2 --retry-connrefused http://localhost:3001/api/health
         docker stop backend

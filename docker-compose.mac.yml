@@ -22,9 +22,10 @@ services:
     volumes:
       - ./apps/backend/src:/app/src
       - ./data:/app/data
-      - ~/media/tv:/tv:ro
-      - ~/media/movies:/movies:ro
-      - ~/media/books:/books:ro
+      # Mac media directories
+      - ~/Documents/media/tv:/tv:ro
+      - ~/Documents/media/movies:/movies:ro
+      - ~/Documents/media/books:/books:ro
     env_file:
       - .env
     environment:

@@ -161,7 +161,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
               <div>
                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">File Path</dt>
                 <dd className="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{show.path}</dd>
-              </div>
+              </div>  
               <div>
                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
                 <dd className="mt-1">

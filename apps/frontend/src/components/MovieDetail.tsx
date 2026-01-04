@@ -28,6 +28,7 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
   const [metadata, setMetadata] = useState<MovieMetadata | null>(null)
   const [loading, setLoading] = useState(true)
   const [fetchingMetadata, setFetchingMetadata] = useState(false)
+  const [metadataError, setMetadataError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchMovieDetails()
@@ -35,12 +36,10 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
 
   const fetchMovieDetails = async () => {
     try {
-      console.log(`Fetching details for movie: ${movieId}`)
-      const response = await fetch(`${API_BASE_URL}/api/movies`)
+      const response = await fetch(`/api/movies`)
       const data = await response.json()
       const foundMovie = data.movies.find((m: MovieData) => m.id === movieId)
       setMovie(foundMovie || null)
-      console.log('Movie details loaded:', foundMovie)
     } catch (err) {
       console.error('Failed to fetch movie details:', err)
     } finally {
@@ -52,26 +51,23 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
     if (!movie) return
     
     setFetchingMetadata(true)
+    setMetadataError(null)
     try {
-      console.log(`Fetching metadata for movie: ${movieId}`)
-      const response = await fetch(`${API_BASE_URL}/api/movies/${encodeURIComponent(movieId)}/metadata`, {
+      const response = await fetch(`/api/movies/${encodeURIComponent(movieId)}/metadata`, {
         method: 'POST'
       })
       
       if (!response.ok) {
         const error = await response.json()
-        console.error('Failed to fetch metadata:', error)
-        alert(`Failed to fetch metadata: ${error.error || 'Unknown error'}`)
+        setMetadataError(error.error || 'Failed to fetch metadata')
         return
       }
       
       const data = await response.json()
-      console.log('Metadata fetched successfully:', data.metadata)
       setMetadata(data.metadata)
-      alert('Metadata fetched successfully!')
     } catch (err) {
       console.error('Error fetching metadata:', err)
-      alert('Failed to fetch metadata. Please try again.')
+      setMetadataError('Failed to connect to server')
     } finally {
       setFetchingMetadata(false)
     }
@@ -156,7 +152,11 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
               </div>
             ) : (
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">No metadata available</p>
+                {metadataError ? (
+                  <p className="text-xs text-red-600 dark:text-red-400 mb-3">{metadataError}</p>
+                ) : (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">No metadata available</p>
+                )}
                 <button
                   onClick={handleFetchMetadata}
                   disabled={fetchingMetadata}
