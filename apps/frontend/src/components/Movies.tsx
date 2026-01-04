@@ -1,42 +1,42 @@
 import { useState, useEffect } from 'react'
 
-interface TVShow {
+interface Movie {
   id: string
   name: string
   path: string
 }
 
-interface TVShowsResponse {
-  shows: TVShow[]
+interface MoviesResponse {
+  movies: Movie[]
   total: number
   message?: string
 }
 
-interface TVShowsProps {
-  onShowSelect: (showId: string) => void
+interface MoviesProps {
+  onMovieSelect: (movieId: string) => void
 }
 
-export default function TVShows({ onShowSelect }: TVShowsProps) {
-  const [shows, setShows] = useState<TVShow[]>([])
+export default function Movies({ onMovieSelect }: MoviesProps) {
+  const [movies, setMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchShows()
+    fetchMovies()
   }, [])
 
-  const fetchShows = async () => {
+  const fetchMovies = async () => {
     try {
-      const response = await fetch('http://localhost:8101/api/tv-shows')
-      const data: TVShowsResponse = await response.json()
+      const response = await fetch('http://localhost:8101/api/movies')
+      const data: MoviesResponse = await response.json()
       
       if (data.message) {
         setError(data.message)
       }
       
-      setShows(data.shows || [])
+      setMovies(data.movies || [])
     } catch (err) {
-      setError('Failed to load TV shows')
+      setError('Failed to load movies')
       console.error(err)
     } finally {
       setLoading(false)
@@ -46,7 +46,7 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-600 dark:text-gray-400">Loading TV shows...</p>
+        <p className="text-gray-600 dark:text-gray-400">Loading movies...</p>
       </div>
     )
   }
@@ -61,10 +61,10 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
     )
   }
 
-  if (shows.length === 0) {
+  if (movies.length === 0) {
     return (
       <div className="p-6">
-        <p className="text-gray-600 dark:text-gray-400">No TV shows found</p>
+        <p className="text-gray-600 dark:text-gray-400">No movies found</p>
       </div>
     )
   }
@@ -72,14 +72,14 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-        TV Shows ({shows.length})
+        Movies ({movies.length})
       </h2>
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {shows.map((show) => (
+        {movies.map((movie) => (
           <div
-            key={show.id}
-            onClick={() => onShowSelect(show.id)}
+            key={movie.id}
+            onClick={() => onMovieSelect(movie.id)}
             className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-4 cursor-pointer"
           >
             <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded mb-2 flex items-center justify-center">
@@ -97,8 +97,8 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
                 />
               </svg>
             </div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate" title={show.name}>
-              {show.name}
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate" title={movie.name}>
+              {movie.name}
             </h3>
           </div>
         ))}

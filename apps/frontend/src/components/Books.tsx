@@ -1,42 +1,42 @@
 import { useState, useEffect } from 'react'
 
-interface TVShow {
+interface Book {
   id: string
   name: string
   path: string
 }
 
-interface TVShowsResponse {
-  shows: TVShow[]
+interface BooksResponse {
+  books: Book[]
   total: number
   message?: string
 }
 
-interface TVShowsProps {
-  onShowSelect: (showId: string) => void
+interface BooksProps {
+  onBookSelect: (bookId: string) => void
 }
 
-export default function TVShows({ onShowSelect }: TVShowsProps) {
-  const [shows, setShows] = useState<TVShow[]>([])
+export default function Books({ onBookSelect }: BooksProps) {
+  const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchShows()
+    fetchBooks()
   }, [])
 
-  const fetchShows = async () => {
+  const fetchBooks = async () => {
     try {
-      const response = await fetch('http://localhost:8101/api/tv-shows')
-      const data: TVShowsResponse = await response.json()
+      const response = await fetch('http://localhost:8101/api/books')
+      const data: BooksResponse = await response.json()
       
       if (data.message) {
         setError(data.message)
       }
       
-      setShows(data.shows || [])
+      setBooks(data.books || [])
     } catch (err) {
-      setError('Failed to load TV shows')
+      setError('Failed to load books')
       console.error(err)
     } finally {
       setLoading(false)
@@ -46,7 +46,7 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-600 dark:text-gray-400">Loading TV shows...</p>
+        <p className="text-gray-600 dark:text-gray-400">Loading books...</p>
       </div>
     )
   }
@@ -61,10 +61,10 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
     )
   }
 
-  if (shows.length === 0) {
+  if (books.length === 0) {
     return (
       <div className="p-6">
-        <p className="text-gray-600 dark:text-gray-400">No TV shows found</p>
+        <p className="text-gray-600 dark:text-gray-400">No books found</p>
       </div>
     )
   }
@@ -72,14 +72,14 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
   return (
     <div className="p-6">
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-        TV Shows ({shows.length})
+        Books ({books.length})
       </h2>
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {shows.map((show) => (
+        {books.map((book) => (
           <div
-            key={show.id}
-            onClick={() => onShowSelect(show.id)}
+            key={book.id}
+            onClick={() => onBookSelect(book.id)}
             className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-4 cursor-pointer"
           >
             <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded mb-2 flex items-center justify-center">
@@ -93,12 +93,12 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                 />
               </svg>
             </div>
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate" title={show.name}>
-              {show.name}
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate" title={book.name}>
+              {book.name}
             </h3>
           </div>
         ))}
