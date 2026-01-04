@@ -339,10 +339,11 @@ const start = async () => {
     const dbPath = process.env.DB_PATH || './data/media.sqlite'
     fastify.log.info(`Initializing database at ${dbPath}`)
     await initDatabase(dbPath)
+    fastify.log.info('Database initialized successfully')
     
     // Start server first, then optionally perform initial scan in background
     await fastify.listen({ port: 3001, host: '0.0.0.0' })
-    console.log('Server running on http://localhost:3001')
+    fastify.log.info('Server running on http://localhost:3001')
     
     // Perform initial scan in background (non-blocking)
     if (process.env.SKIP_INITIAL_SCAN !== 'true') {
