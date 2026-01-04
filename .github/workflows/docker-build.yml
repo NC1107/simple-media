@@ -1,0 +1,37 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build frontend
+      run: |
+        docker build -t simple-media-frontend:latest \
+          --target dev \
+          ./apps/frontend
+    
+    - name: Build backend
+      run: |
+        docker build -t simple-media-backend:latest \
+          --target dev \
+          ./apps/backend
+    
+    - name: Test backend health
+      run: |
+        docker run -d --name backend -p 3001:3001 simple-media-backend:latest
+        sleep 5
+        curl --fail http://localhost:3001/api/health || exit 1
+        docker stop backend
