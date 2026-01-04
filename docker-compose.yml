@@ -1,0 +1,24 @@
+services:
+  frontend:
+    build:
+      context: ./apps/frontend
+      target: production
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./apps/backend
+      target: prod
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - DB_PATH=/app/data/media.sqlite
+
+volumes:
+  data:
