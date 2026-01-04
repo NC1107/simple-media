@@ -1,8 +1,28 @@
 # Simple Media
 
+<p align="center">
+  <img src="docs/logo.jpg" alt="Simple Media Logo" width="200"/>
+</p>
+
+A lightweight media management system for organizing TV shows, movies, and books.
+
+## Dashboard
+
+![Dashboard Screenshot](docs/dashboard-screenshot.png)
+
+## Overview
+
 The overall goal of this project is to create a way to manage media, in a 'lighter' way, the arr stack feels very bulky
 I understand the need for seperation at times, but I do not understand the need for a different app and setup solely for
 a different type of media.
+
+## Features
+
+- 📺 **TV Shows Management** - Organize and track your TV show library
+- 🎬 **Movies Management** - Manage your movie collection with optional TMDB metadata
+- 📚 **Books Management** - Keep track of your digital book library
+- ⚙️ **Settings** - Control metadata scanning behavior per media type
+- 🔍 **Database Inspector** - View metadata coverage across your library
 
 ## Current Goal
 
