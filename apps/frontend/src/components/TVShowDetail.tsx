@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '../config'
 
 interface TVShowDetailProps {
   showId: string
@@ -40,7 +41,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
 
   const fetchShowDetails = async () => {
     try {
-      const response = await fetch('http://localhost:8101/api/tv-shows')
+      const response = await fetch(`${API_BASE_URL}/api/tv-shows`)
       const data = await response.json()
       const foundShow = data.shows.find((s: TVShowData) => s.id === showId)
       setShow(foundShow || null)
@@ -53,7 +54,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
 
   const fetchSeasons = async () => {
     try {
-      const response = await fetch(`http://localhost:8101/api/tv-shows/${encodeURIComponent(showId)}/seasons`)
+      const response = await fetch(`${API_BASE_URL}/api/tv-shows/${encodeURIComponent(showId)}/seasons`)
       const data = await response.json()
       setSeasons(data.seasons || [])
     } catch (err) {
@@ -66,7 +67,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
     
     try {
       const response = await fetch(
-        `http://localhost:8101/api/tv-shows/${encodeURIComponent(showId)}/seasons/${encodeURIComponent(seasonId)}/episodes`
+        `${API_BASE_URL}/api/tv-shows/${encodeURIComponent(showId)}/seasons/${encodeURIComponent(seasonId)}/episodes`
       )
       const data = await response.json()
       setEpisodes(prev => ({ ...prev, [seasonId]: data.episodes || [] }))

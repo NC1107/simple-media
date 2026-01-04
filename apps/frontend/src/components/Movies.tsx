@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '../config'
 
 interface Movie {
   id: string
@@ -27,7 +28,7 @@ export default function Movies({ onMovieSelect }: MoviesProps) {
 
   const fetchMovies = async () => {
     try {
-      const response = await fetch('http://localhost:8101/api/movies')
+      const response = await fetch(`${API_BASE_URL}/api/movies`)
       const data: MoviesResponse = await response.json()
       
       if (data.message) {

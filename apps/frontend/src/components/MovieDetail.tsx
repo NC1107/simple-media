@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '../config'
 
 interface MovieDetailProps {
   movieId: string
@@ -21,7 +22,7 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
 
   const fetchMovieDetails = async () => {
     try {
-      const response = await fetch('http://localhost:8101/api/movies')
+      const response = await fetch(`${API_BASE_URL}/api/movies`)
       const data = await response.json()
       const foundMovie = data.movies.find((m: MovieData) => m.id === movieId)
       setMovie(foundMovie || null)

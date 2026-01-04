@@ -29,7 +29,7 @@ services:
     environment:
       - NODE_ENV=development
       - DB_PATH=/app/data/media.sqlite
-      - MEDIA_PATH=/tv
+      - TV_SHOWS_PATH=/tv
       - MOVIES_PATH=/movies
       - BOOKS_PATH=/books
 

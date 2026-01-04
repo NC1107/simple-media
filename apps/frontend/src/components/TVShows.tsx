@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '../config'
 
 interface TVShow {
   id: string
@@ -27,7 +28,7 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
 
   const fetchShows = async () => {
     try {
-      const response = await fetch('http://localhost:8101/api/tv-shows')
+      const response = await fetch(`${API_BASE_URL}/api/tv-shows`)
       const data: TVShowsResponse = await response.json()
       
       if (data.message) {

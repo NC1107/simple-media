@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '../config'
 
 interface Stats {
   tvShows: number
@@ -16,7 +17,7 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('http://localhost:8101/api/stats')
+      const response = await fetch(`${API_BASE_URL}/api/stats`)
       const data = await response.json()
       setStats(data)
     } catch (err) {

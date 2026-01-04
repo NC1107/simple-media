@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '../config'
 
 interface BookDetailProps {
   bookId: string
@@ -21,7 +22,7 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
 
   const fetchBookDetails = async () => {
     try {
-      const response = await fetch('http://localhost:8101/api/books')
+      const response = await fetch(`${API_BASE_URL}/api/books`)
       const data = await response.json()
       const foundBook = data.books.find((b: BookData) => b.id === bookId)
       setBook(foundBook || null)

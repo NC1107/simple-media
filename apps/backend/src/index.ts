@@ -7,9 +7,9 @@ const fastify = Fastify({
   logger: true
 })
 
-// Enable CORS for frontend
+// Enable CORS for frontend - allow all origins in development/production
 await fastify.register(cors, {
-  origin: ['http://localhost:8100'] // Frontend URL
+  origin: true // Allow all origins, or use environment variable for specific origins
 })
 
 // Health check endpoint
@@ -20,7 +20,7 @@ fastify.get('/api/health', async (request, reply) => {
 // Get TV shows from media directory
 fastify.get('/api/tv-shows', async (request, reply) => {
   try {
-    const tvPath = process.env.MEDIA_PATH || '/tv'
+    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
     
     // Check if directory exists
     try {
@@ -53,7 +53,7 @@ fastify.get('/api/tv-shows', async (request, reply) => {
 fastify.get('/api/tv-shows/:showId/seasons', async (request, reply) => {
   try {
     const { showId } = request.params as { showId: string }
-    const tvPath = process.env.MEDIA_PATH || '/tv'
+    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
     const showPath = path.join(tvPath, showId)
     
     // Check if show directory exists
@@ -93,7 +93,7 @@ fastify.get('/api/tv-shows/:showId/seasons', async (request, reply) => {
 fastify.get('/api/tv-shows/:showId/seasons/:seasonId/episodes', async (request, reply) => {
   try {
     const { showId, seasonId } = request.params as { showId: string, seasonId: string }
-    const tvPath = process.env.MEDIA_PATH || '/tv'
+    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
     const seasonPath = path.join(tvPath, showId, seasonId)
     
     // Check if season directory exists
@@ -203,7 +203,7 @@ fastify.get('/api/books', async (request, reply) => {
 // Dashboard stats endpoint
 fastify.get('/api/stats', async (request, reply) => {
   try {
-    const tvPath = process.env.MEDIA_PATH || '/tv'
+    const tvPath = process.env.TV_SHOWS_PATH || '/tv'
     const moviesPath = process.env.MOVIES_PATH || '/movies'
     const booksPath = process.env.BOOKS_PATH || '/books'
 
