@@ -1,7 +1,14 @@
 import { useState } from 'react'
+import TVShows from './components/TVShows'
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [currentView, setCurrentView] = useState('welcome')
+
+  const handleNavigation = (view: string) => {
+    setCurrentView(view)
+    setMenuOpen(false)
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -56,24 +63,59 @@ function App() {
           <nav className="space-y-1">
             <a
               href="#"
+              onClick={(e) => { e.preventDefault(); handleNavigation('books') }}
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Books
+            </a>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); handleNavigation('tv-shows') }}
               className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
               TV Shows
+            </a>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); handleNavigation('movies') }}
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Movies
             </a>
           </nav>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome to Simple Media
-          </h1>
-          <p className="text-xl text-gray-600">
-            Click the menu to get started
-          </p>
-        </div>
+      <div className="min-h-screen">
+        {currentView === 'welcome' && (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                Welcome to Simple Media
+              </h1>
+              <p className="text-xl text-gray-600">
+                Click the menu to get started
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {currentView === 'tv-shows' && <TVShows />}
+        
+        {currentView === 'books' && (
+          <div className="p-6">
+            <h2 className="text-2xl font-bold text-gray-900">Books</h2>
+            <p className="text-gray-600 mt-2">Coming soon...</p>
+          </div>
+        )}
+        
+        {currentView === 'movies' && (
+          <div className="p-6">
+            <h2 className="text-2xl font-bold text-gray-900">Movies</h2>
+            <p className="text-gray-600 mt-2">Coming soon...</p>
+          </div>
+        )}
       </div>
     </div>
   )
