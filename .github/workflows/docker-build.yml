@@ -46,6 +46,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     
     steps:
     - name: Checkout code
@@ -68,8 +69,8 @@ jobs:
         target: production
         push: true
         tags: |
-          ghcr.io/${{ github.repository_owner }}/simple-media-frontend:latest
-          ghcr.io/${{ github.repository_owner }}/simple-media-frontend:${{ github.sha }}
+          ghcr.io/nc1107/simple-media-frontend:latest
+          ghcr.io/nc1107/simple-media-frontend:${{ github.sha }}
     
     - name: Build and push backend
       uses: docker/build-push-action@v5
@@ -78,13 +79,13 @@ jobs:
         target: prod
         push: true
         tags: |
-          ghcr.io/${{ github.repository_owner }}/simple-media-backend:latest
-          ghcr.io/${{ github.repository_owner }}/simple-media-backend:${{ github.sha }}
+          ghcr.io/nc1107/simple-media-backend:latest
+          ghcr.io/nc1107/simple-media-backend:${{ github.sha }}
     
     - name: Run Trivy scan on frontend
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ghcr.io/${{ github.repository_owner }}/simple-media-frontend:latest
+        image-ref: ghcr.io/nc1107/simple-media-frontend:latest
         format: 'sarif'
         output: 'trivy-frontend.sarif'
         severity: 'HIGH,CRITICAL'
@@ -92,20 +93,20 @@ jobs:
     - name: Run Trivy scan on backend
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ghcr.io/${{ github.repository_owner }}/simple-media-backend:latest
+        image-ref: ghcr.io/nc1107/simple-media-backend:latest
         format: 'sarif'
         output: 'trivy-backend.sarif'
         severity: 'HIGH,CRITICAL'
     
     - name: Upload Trivy results
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       if: always()
       with:
         sarif_file: '.'
     
     - name: Test backend health
       run: |
-        docker run -d --name backend -p 3001:3001 ghcr.io/${{ github.repository_owner }}/simple-media-backend:latest
+        docker run -d --name backend -p 3001:3001 ghcr.io/nc1107/simple-media-backend:latest
         sleep 5
         curl --fail http://localhost:3001/api/health || exit 1
         docker stop backend
