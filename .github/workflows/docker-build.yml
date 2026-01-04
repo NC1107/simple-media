@@ -1,4 +1,4 @@
-name: Docker Build & Security
+name: Docker Build Pipeline w/ Security Scans
 
 on:
   push:

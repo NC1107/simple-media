@@ -63,7 +63,7 @@ function Settings() {
       const result = await response.json()
       console.log('Setting updated successfully:', result)
 
-      setSettings(prev => ({
+      setSettings((prev: SettingsState) => ({
         ...prev,
         [key]: value
       }))
