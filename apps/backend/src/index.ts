@@ -1,8 +1,9 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import path from 'path'
-import { initDatabase, getMediaItemsByType, getMediaItemByPath, getTVEpisodesBySeason, getMediaStats } from './db.js'
+import { initDatabase, getMediaItemsByType, getMediaItemByPath, getTVEpisodesBySeason, getMediaStats, getAllSettings, setSetting, getSetting } from './db.js'
 import { scanAllMedia } from './scanner.js'
+import { searchMovie, parseMovieTitle } from './tmdb.js'
 
 const fastify = Fastify({
   logger: true
@@ -156,6 +157,81 @@ fastify.get('/api/stats', async (request, reply) => {
   } catch (error) {
     fastify.log.error(error)
     return reply.status(500).send({ error: 'Failed to fetch stats' })
+  }
+})
+
+// Settings endpoints
+fastify.get('/api/settings', async (request, reply) => {
+  try {
+    fastify.log.info('Fetching all settings')
+    const settings = await getAllSettings()
+    fastify.log.info('Settings fetched successfully')
+    return settings
+  } catch (error) {
+    fastify.log.error('Failed to fetch settings', error)
+    return reply.status(500).send({ error: 'Failed to fetch settings' })
+  }
+})
+
+fastify.post('/api/settings', async (request, reply) => {
+  try {
+    const { key, value } = request.body as { key: string; value: string }
+    
+    if (!key || value === undefined) {
+      return reply.status(400).send({ error: 'Key and value are required' })
+    }
+    
+    fastify.log.info(`Updating setting: ${key} = ${value}`)
+    await setSetting(key, value)
+    fastify.log.info(`Setting ${key} updated successfully`)
+    
+    return { success: true, key, value }
+  } catch (error) {
+    fastify.log.error('Failed to update setting', error)
+    return reply.status(500).send({ error: 'Failed to update setting' })
+  }
+})
+
+// Fetch metadata for a single movie
+fastify.post('/api/movies/:movieId/metadata', async (request, reply) => {
+  try {
+    const { movieId } = request.params as { movieId: string }
+    
+    fastify.log.info(`Fetching metadata for movie: ${movieId}`)
+    
+    const movie = await getMediaItemByPath(movieId)
+    if (!movie) {
+      fastify.log.warn(`Movie not found: ${movieId}`)
+      return reply.status(404).send({ error: 'Movie not found' })
+    }
+    
+    const { title: cleanTitle, year } = parseMovieTitle(movie.title)
+    fastify.log.info(`Parsed movie title: "${cleanTitle}", year: ${year}`)
+    
+    const metadata = await searchMovie(cleanTitle, year)
+    if (!metadata) {
+      fastify.log.warn(`No TMDB metadata found for: ${movie.title}`)
+      return reply.status(404).send({ error: 'Metadata not found' })
+    }
+    
+    const metadataJson = JSON.stringify(metadata)
+    movie.metadata_json = metadataJson
+    
+    await setSetting(`movie_metadata_${movieId}`, metadataJson)
+    
+    // Update the media item with metadata
+    const { insertMediaItem } = await import('./db.js')
+    await insertMediaItem({
+      ...movie,
+      metadata_json: metadataJson
+    })
+    
+    fastify.log.info(`Metadata fetched and saved for: ${metadata.title}`)
+    
+    return { success: true, metadata }
+  } catch (error) {
+    fastify.log.error('Failed to fetch movie metadata', error)
+    return reply.status(500).send({ error: 'Failed to fetch metadata' })
   }
 })
 

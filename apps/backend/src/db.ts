@@ -62,9 +62,27 @@ export async function initDatabase(dbPath: string): Promise<Database> {
     )
   `)
   
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `)
+  
   // Create indexes
   await client.execute('CREATE INDEX IF NOT EXISTS idx_media_type ON media_items(type)')
   await client.execute('CREATE INDEX IF NOT EXISTS idx_tv_episodes_show ON tv_episodes(show_id)')
+  
+  // Initialize default settings
+  await client.execute(`
+    INSERT OR IGNORE INTO settings (key, value) VALUES ('movies_metadata_enabled', 'false')
+  `)
+  await client.execute(`
+    INSERT OR IGNORE INTO settings (key, value) VALUES ('tv_metadata_enabled', 'false')
+  `)
+  await client.execute(`
+    INSERT OR IGNORE INTO settings (key, value) VALUES ('books_metadata_enabled', 'false')
+  `)
   
   return database
 }
@@ -143,4 +161,31 @@ export async function getMediaStats(): Promise<{ tvShows: number; movies: number
     movies: stats.find(s => s.type === 'movie')?.count || 0,
     books: stats.find(s => s.type === 'book')?.count || 0
   }
+}
+
+export async function getSetting(key: string): Promise<string | null> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT value FROM settings WHERE key = ?',
+    args: [key]
+  })
+  return result.rows[0]?.value || null
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  const database = getDatabase()
+  await database.db.execute({
+    sql: 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+    args: [key, value]
+  })
+}
+
+export async function getAllSettings(): Promise<Record<string, string>> {
+  const database = getDatabase()
+  const result = await database.db.execute('SELECT key, value FROM settings')
+  const settings: Record<string, string> = {}
+  for (const row of result.rows) {
+    settings[row.key] = row.value
+  }
+  return settings
 }

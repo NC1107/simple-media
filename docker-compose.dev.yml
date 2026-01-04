@@ -22,9 +22,10 @@ services:
     volumes:
       - ./apps/backend/src:/app/src
       - ./data:/app/data
-      - E:\media\tv:/tv:ro
-      - E:\media\movies:/movies:ro
-      - E:\media\books:/books:ro
+      # Update these paths to your macOS media directories
+      # - ~/media/tv:/tv:ro
+      # - ~/media/movies:/movies:ro
+      # - ~/media/books:/books:ro
     env_file:
       - .env
     environment:

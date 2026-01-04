@@ -4,6 +4,23 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p'
 
+// Rate limiting: TMDB allows 50 req/sec, we'll be conservative at 4 req/sec (250ms delay)
+const RATE_LIMIT_DELAY = 250 // milliseconds
+let lastRequestTime = 0
+
+async function rateLimitedFetch(url: string): Promise<Response> {
+  const now = Date.now()
+  const timeSinceLastRequest = now - lastRequestTime
+  
+  if (timeSinceLastRequest < RATE_LIMIT_DELAY) {
+    const waitTime = RATE_LIMIT_DELAY - timeSinceLastRequest
+    await new Promise(resolve => setTimeout(resolve, waitTime))
+  }
+  
+  lastRequestTime = Date.now()
+  return fetch(url)
+}
+
 interface TMDBMovieResult {
   id: number
   title: string
@@ -53,7 +70,7 @@ export async function searchMovie(title: string, year?: string): Promise<MovieMe
       params.append('year', year)
     }
 
-    const response = await fetch(`${TMDB_BASE_URL}/search/movie?${params}`)
+    const response = await rateLimitedFetch(`${TMDB_BASE_URL}/search/movie?${params}`)
     
     if (!response.ok) {
       console.error(`TMDB API error: ${response.status}`)

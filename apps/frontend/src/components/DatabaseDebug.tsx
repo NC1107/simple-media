@@ -36,11 +36,7 @@ export default function DatabaseDebug() {
 
   const fetchData = async () => {
     try {
-      const apiUrl = import.meta.env.DEV 
-        ? 'http://localhost:8101'
-        : window.location.origin.replace(':8100', ':8101')
-      
-      const response = await fetch(`${apiUrl}/api/debug/database`)
+      const response = await fetch('/api/debug/database')
       const result = await response.json()
       setData(result)
     } catch (error) {

@@ -33,7 +33,7 @@ export default function SeasonEpisodes({ showId, showName, seasonId, onBack }: S
   const fetchEpisodes = async () => {
     try {
       const response = await fetch(
-        `http://localhost:8101/api/tv-shows/${encodeURIComponent(showId)}/seasons/${encodeURIComponent(seasonId)}/episodes`
+        `/api/tv-shows/${encodeURIComponent(showId)}/seasons/${encodeURIComponent(seasonId)}/episodes`
       )
       const data: EpisodesResponse = await response.json()
       

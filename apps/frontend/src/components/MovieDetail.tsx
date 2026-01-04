@@ -12,9 +12,22 @@ interface MovieData {
   path: string
 }
 
+interface MovieMetadata {
+  tmdb_id: number
+  title: string
+  overview: string
+  release_year: string
+  poster_url: string | null
+  backdrop_url: string | null
+  rating: number
+  vote_count: number
+}
+
 export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
   const [movie, setMovie] = useState<MovieData | null>(null)
+  const [metadata, setMetadata] = useState<MovieMetadata | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchingMetadata, setFetchingMetadata] = useState(false)
 
   useEffect(() => {
     fetchMovieDetails()
@@ -22,14 +35,45 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
 
   const fetchMovieDetails = async () => {
     try {
+      console.log(`Fetching details for movie: ${movieId}`)
       const response = await fetch(`${API_BASE_URL}/api/movies`)
       const data = await response.json()
       const foundMovie = data.movies.find((m: MovieData) => m.id === movieId)
       setMovie(foundMovie || null)
+      console.log('Movie details loaded:', foundMovie)
     } catch (err) {
-      console.error(err)
+      console.error('Failed to fetch movie details:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleFetchMetadata = async () => {
+    if (!movie) return
+    
+    setFetchingMetadata(true)
+    try {
+      console.log(`Fetching metadata for movie: ${movieId}`)
+      const response = await fetch(`${API_BASE_URL}/api/movies/${encodeURIComponent(movieId)}/metadata`, {
+        method: 'POST'
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('Failed to fetch metadata:', error)
+        alert(`Failed to fetch metadata: ${error.error || 'Unknown error'}`)
+        return
+      }
+      
+      const data = await response.json()
+      console.log('Metadata fetched successfully:', data.metadata)
+      setMetadata(data.metadata)
+      alert('Metadata fetched successfully!')
+    } catch (err) {
+      console.error('Error fetching metadata:', err)
+      alert('Failed to fetch metadata. Please try again.')
+    } finally {
+      setFetchingMetadata(false)
     }
   }
 
@@ -69,30 +113,72 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
-          <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center shadow-lg">
-            <svg
-              className="w-24 h-24 text-gray-400 dark:text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+          <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center shadow-lg overflow-hidden">
+            {metadata?.poster_url ? (
+              <img 
+                src={metadata.poster_url} 
+                alt={metadata.title}
+                className="w-full h-full object-cover"
               />
-            </svg>
+            ) : (
+              <svg
+                className="w-24 h-24 text-gray-400 dark:text-gray-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+                />
+              </svg>
+            )}
           </div>
           
           <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Metadata</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Coming soon...</p>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Metadata</h3>
+            {metadata ? (
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">TMDB ID:</span>
+                  <span className="ml-2 text-gray-900 dark:text-white">{metadata.tmdb_id}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Rating:</span>
+                  <span className="ml-2 text-gray-900 dark:text-white">{metadata.rating.toFixed(1)}/10</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Votes:</span>
+                  <span className="ml-2 text-gray-900 dark:text-white">{metadata.vote_count.toLocaleString()}</span>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">No metadata available</p>
+                <button
+                  onClick={handleFetchMetadata}
+                  disabled={fetchingMetadata}
+                  className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {fetchingMetadata ? 'Fetching...' : 'Fetch Metadata'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="md:col-span-2">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">{movie.name}</h1>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            {metadata?.title || movie.name}
+          </h1>
+          
+          {metadata?.release_year && (
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+              {metadata.release_year}
+            </p>
+          )}
           
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">File Information</h2>
@@ -118,9 +204,15 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Description</h2>
-            <p className="text-gray-500 dark:text-gray-400 italic">
-              Detailed movie information will appear here once metadata is fetched.
-            </p>
+            {metadata?.overview ? (
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                {metadata.overview}
+              </p>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400 italic">
+                Detailed movie information will appear here once metadata is fetched.
+              </p>
+            )}
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">

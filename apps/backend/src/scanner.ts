@@ -1,6 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { insertMediaItem, insertTVEpisode, getMediaItemByPath } from './db.js'
+import { insertMediaItem, insertTVEpisode, getMediaItemByPath, getSetting } from './db.js'
 import { searchMovie, parseMovieTitle } from './tmdb.js'
 
 interface ScanResult {
@@ -147,9 +147,13 @@ export async function scanMovies(moviesPath: string): Promise<ScanResult> {
         
         const existingMovie = await getMediaItemByPath(entry.name)
         
-        // Fetch metadata from TMDB if not already cached
+        // Check if metadata scanning is enabled
+        const metadataEnabled = await getSetting('movies_metadata_enabled')
+        const shouldFetchMetadata = metadataEnabled === 'true'
+        
+        // Fetch metadata from TMDB if enabled and not already cached
         let metadataJson = existingMovie?.metadata_json
-        if (!metadataJson) {
+        if (!metadataJson && shouldFetchMetadata) {
           console.log(`Fetching TMDB metadata for movie: ${title}`)
           const { title: cleanTitle, year } = parseMovieTitle(title)
           console.log(`Parsed title: "${cleanTitle}", year: ${year}`)
@@ -160,6 +164,8 @@ export async function scanMovies(moviesPath: string): Promise<ScanResult> {
           } else {
             console.log(`No TMDB metadata found for: ${title}`)
           }
+        } else if (!metadataJson) {
+          console.log(`Metadata scanning disabled for movies, skipping: ${title}`)
         } else {
           console.log(`Using cached metadata for: ${title}`)
         }

@@ -1,5 +1,5 @@
 // API Configuration
-// Use current browser hostname for API - works for localhost and remote access
-const API_BASE_URL = `http://${window.location.hostname}:8101`
+// Use relative path - Nginx will proxy to backend container
+const API_BASE_URL = ''
 
 export { API_BASE_URL }
