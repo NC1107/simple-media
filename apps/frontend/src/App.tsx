@@ -37,7 +37,7 @@ function App() {
 
       {/* Sidebar Menu */}
       <div
-        className={`fixed top-0 left-0 h-full w-full md:w-1/3 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-40 transform transition-transform duration-300 ease-in-out ${
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -58,31 +58,7 @@ function App() {
               href="#"
               className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              Dashboard
-            </a>
-            <a
-              href="#"
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              Books
-            </a>
-            <a
-              href="#"
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
               TV Shows
-            </a>
-            <a
-              href="#"
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              Movies
-            </a>
-            <a
-              href="#"
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              Settings
             </a>
           </nav>
         </div>
