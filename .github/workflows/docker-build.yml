@@ -1,4 +1,4 @@
-name: Docker Build
+name: Docker Build & Security
 
 on:
   push:
@@ -7,8 +7,42 @@ on:
     branches: [ main ]
 
 jobs:
+  security:
+    runs-on: ubuntu-latest
+    name: Security Checks
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Hadolint (Dockerfile linter)
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: apps/frontend/Dockerfile
+        failure-threshold: warning
+    
+    - name: Run Hadolint on backend
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: apps/backend/Dockerfile
+        failure-threshold: warning
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Audit frontend dependencies
+      working-directory: apps/frontend
+      run: npm audit --audit-level=high
+    
+    - name: Audit backend dependencies
+      working-directory: apps/backend
+      run: npm audit --audit-level=high
+
   build:
     runs-on: ubuntu-latest
+    needs: security
     
     steps:
     - name: Checkout code
@@ -28,6 +62,28 @@ jobs:
         docker build -t simple-media-backend:latest \
           --target dev \
           ./apps/backend
+    
+    - name: Run Trivy scan on frontend
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: simple-media-frontend:latest
+        format: 'sarif'
+        output: 'trivy-frontend.sarif'
+        severity: 'HIGH,CRITICAL'
+    
+    - name: Run Trivy scan on backend
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: simple-media-backend:latest
+        format: 'sarif'
+        output: 'trivy-backend.sarif'
+        severity: 'HIGH,CRITICAL'
+    
+    - name: Upload Trivy results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: '.'
     
     - name: Test backend health
       run: |
