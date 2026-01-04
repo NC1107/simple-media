@@ -103,7 +103,7 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
   return result
 }
 
-export async function scanMovies(moviesPath: string): Promise<ScanResult> {
+export async function scanMovies(moviesPath: string, skipMetadata = false): Promise<ScanResult> {
   const result: ScanResult = { added: 0, updated: 0, errors: [] }
   const now = Date.now()
   
@@ -165,7 +165,7 @@ export async function scanMovies(moviesPath: string): Promise<ScanResult> {
         
         // Check if metadata scanning is enabled
         const metadataEnabled = await getSetting('movies_metadata_enabled')
-        const shouldFetchMetadata = metadataEnabled === 'true'
+        const shouldFetchMetadata = !skipMetadata && metadataEnabled === 'true'
         
         // Fetch metadata from TMDB if enabled and not already cached
         let metadataJson = existingMovie?.metadata_json
@@ -287,11 +287,12 @@ export async function scanBooks(booksPath: string): Promise<ScanResult> {
 export async function scanAllMedia(
   tvShowsPath: string,
   moviesPath: string,
-  booksPath: string
+  booksPath: string,
+  skipMetadata = false
 ): Promise<{ tvShows: ScanResult; movies: ScanResult; books: ScanResult }> {
   const [tvShows, movies, books] = await Promise.all([
     scanTVShows(tvShowsPath),
-    scanMovies(moviesPath),
+    scanMovies(moviesPath, skipMetadata),
     scanBooks(booksPath)
   ])
   

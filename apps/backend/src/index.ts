@@ -269,7 +269,7 @@ fastify.post('/api/scan', async (request, reply) => {
     const booksPath = process.env.BOOKS_PATH || '/books'
     
     fastify.log.info('Starting media scan...')
-    const results = await scanAllMedia(tvPath, moviesPath, booksPath)
+    const results = await scanAllMedia(tvPath, moviesPath, booksPath, false)  // Allow metadata on manual scan
     fastify.log.info('Media scan completed')
     
     return { 
@@ -350,8 +350,8 @@ const start = async () => {
       const moviesPath = process.env.MOVIES_PATH || '/movies'
       const booksPath = process.env.BOOKS_PATH || '/books'
       
-      fastify.log.info('Performing initial media scan in background...')
-      scanAllMedia(tvPath, moviesPath, booksPath)
+      fastify.log.info('Performing initial media scan in background (no metadata)...')
+      scanAllMedia(tvPath, moviesPath, booksPath, true)  // skipMetadata=true
         .then((scanResults) => {
           fastify.log.info(`Initial scan completed: TV ${scanResults.tvShows.added}/${scanResults.tvShows.updated}, Movies ${scanResults.movies.added}/${scanResults.movies.updated}, Books ${scanResults.books.added}/${scanResults.books.updated}`)
         })
