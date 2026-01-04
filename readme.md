@@ -13,12 +13,7 @@ I understand the need for seperation at times, but I do not understand the need 
 a different type of media.
 
 ## Features
-
-- 📺 **TV Shows Management** - Organize and track your TV show library
-- 🎬 **Movies Management** - Manage your movie collection with optional TMDB metadata
-- 📚 **Books Management** - Keep track of your digital book library
-- ⚙️ **Settings** - Control metadata scanning behavior per media type
-- 🔍 **Database Inspector** - View metadata coverage across your library
+- None :)
 
 ## Current Goal
 
