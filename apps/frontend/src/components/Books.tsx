@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { API_BASE_URL } from '../config'
+import { showToast } from './Toast'
 
 interface Book {
   id: string
@@ -57,13 +58,13 @@ export default function Books({ onBookSelect }: BooksProps) {
       }
 
       const result = await response.json()
-      alert(`Books scan completed!\n\nAdded: ${result.added}\nUpdated: ${result.updated}`)
+      showToast(`Books scan completed! Added: ${result.added}, Updated: ${result.updated}`, 'success')
       
       // Refresh the books list
       await fetchBooks()
     } catch (error) {
       console.error('Books scan failed:', error)
-      alert('Failed to scan books. Check console for details.')
+      showToast('Failed to scan books. Check console for details.', 'error')
     } finally {
       setScanning(false)
     }

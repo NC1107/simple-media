@@ -1,7 +1,8 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import path from 'path'
-import { initDatabase, getMediaItemsByType, getMediaItemByPath, getTVEpisodesBySeason, getMediaStats, getAllSettings, setSetting, getSetting, getDatabase } from './db.js'
+import fs from 'fs/promises'
+import { initDatabase, getMediaItemsByType, getMediaItemByPath, getTVEpisodesBySeason, getMediaStats, getAllSettings, setSetting, getSetting, getDatabase, cleanupInvalidSettings } from './db.js'
 import { scanAllMedia, scanMovies, scanTVShows, scanBooks } from './scanner.js'
 import { searchMovie, parseMovieTitle } from './tmdb.js'
 
@@ -19,6 +20,50 @@ fastify.get('/api/health', async (request, reply) => {
   return { status: 'ok', service: 'simple-media-backend' }
 })
 
+// Serve local images
+fastify.get('/api/images/:mediaType/:itemPath/*', async (request, reply) => {
+  try {
+    const { mediaType, itemPath } = request.params as { mediaType: string, itemPath: string }
+    const imagePath = (request.params as any)['*']
+    
+    let basePath = ''
+    if (mediaType === 'tv') {
+      basePath = process.env.TV_PATH || '/tv'
+    } else if (mediaType === 'movies') {
+      basePath = process.env.MOVIES_PATH || '/movies'
+    } else if (mediaType === 'books') {
+      basePath = process.env.BOOKS_PATH || '/books'
+    } else {
+      return reply.status(400).send({ error: 'Invalid media type' })
+    }
+    
+    const fullPath = path.join(basePath, itemPath, imagePath)
+    
+    // Check if file exists and is actually an image
+    try {
+      await fs.access(fullPath)
+      const ext = path.extname(fullPath).toLowerCase()
+      if (!['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)) {
+        return reply.status(400).send({ error: 'Not an image file' })
+      }
+      
+      // Set appropriate content type
+      const contentType = ext === '.png' ? 'image/png' : 
+                         ext === '.webp' ? 'image/webp' :
+                         ext === '.gif' ? 'image/gif' : 'image/jpeg'
+      
+      reply.header('Content-Type', contentType)
+      const fileStream = await fs.readFile(fullPath)
+      return reply.send(fileStream)
+    } catch (err) {
+      return reply.status(404).send({ error: 'Image not found' })
+    }
+  } catch (error) {
+    fastify.log.error(error, 'Failed to serve image')
+    return reply.status(500).send({ error: 'Failed to serve image' })
+  }
+})
+
 // Get TV shows from media directory
 fastify.get('/api/tv-shows', async (request, reply) => {
   try {
@@ -28,7 +73,8 @@ fastify.get('/api/tv-shows', async (request, reply) => {
       shows: shows.map(show => ({
         id: show.path,
         name: show.title,
-        path: show.path
+        path: show.path,
+        metadata_json: show.metadata_json
       })),
       total: shows.length 
     }
@@ -99,7 +145,8 @@ fastify.get('/api/tv-shows/:showId/seasons/:seasonId/episodes', async (request, 
         name: ep.title,
         episodeNumber: ep.episode_number,
         path: ep.file_path,
-        fileSize: ep.file_size
+        fileSize: ep.file_size,
+        metadata_json: ep.metadata_json
       })),
       total: episodes.length 
     }
@@ -216,9 +263,6 @@ fastify.post('/api/movies/:movieId/metadata', async (request, reply) => {
     }
     
     const metadataJson = JSON.stringify(metadata)
-    movie.metadata_json = metadataJson
-    
-    await setSetting(`movie_metadata_${movieId}`, metadataJson)
     
     // Update the media item with metadata
     const { insertMediaItem } = await import('./db.js')
@@ -233,6 +277,125 @@ fastify.post('/api/movies/:movieId/metadata', async (request, reply) => {
   } catch (error) {
     fastify.log.error(error, 'Failed to fetch movie metadata')
     return reply.status(500).send({ error: 'Failed to fetch metadata' })
+  }
+})
+
+// Fetch metadata for a specific TV show
+fastify.post('/api/tv-shows/:showId/metadata', async (request, reply) => {
+  try {
+    const { showId } = request.params as { showId: string }
+    
+    fastify.log.info(`Fetching metadata for TV show: ${showId}`)
+    
+    const show = await getMediaItemByPath(showId)
+    if (!show) {
+      fastify.log.warn(`TV show not found: ${showId}`)
+      return reply.status(404).send({ error: 'TV show not found' })
+    }
+    
+    const { searchTVShow, parseTVShowTitle } = await import('./tvdb.js')
+    const { saveTVShowPoster } = await import('./imageDownloader.js')
+    const { title: cleanTitle, year } = parseTVShowTitle(show.title)
+    fastify.log.info(`Parsed TV show title: "${cleanTitle}", year: ${year}`)
+    
+    const metadata = await searchTVShow(cleanTitle, year)
+    if (!metadata) {
+      fastify.log.warn(`No TVDB metadata found for: ${show.title}`)
+      return reply.status(404).send({ error: 'Metadata not found' })
+    }
+    
+    // Save poster locally if enabled
+    if (metadata.poster_url) {
+      const showPath = path.join(process.env.TV_PATH || '/tv', showId)
+      const savedPosterPath = await saveTVShowPoster(metadata.poster_url, showPath)
+      if (savedPosterPath !== metadata.poster_url) {
+        metadata.poster_url = savedPosterPath
+      }
+    }
+    
+    const metadataJson = JSON.stringify(metadata)
+    
+    // Update the media item with metadata
+    const { insertMediaItem } = await import('./db.js')
+    await insertMediaItem({
+      ...show,
+      metadata_json: metadataJson
+    })
+    
+    fastify.log.info(`Metadata fetched and saved for: ${metadata.title}`)
+    
+    return { success: true, metadata }
+  } catch (error) {
+    fastify.log.error(error, 'Failed to fetch TV show metadata')
+    return reply.status(500).send({ error: 'Failed to fetch metadata' })
+  }
+})
+
+// Fetch metadata for a specific episode
+fastify.post('/api/tv-shows/:showId/seasons/:seasonId/episodes/:episodeNumber/metadata', async (request, reply) => {
+  try {
+    const { showId, seasonId, episodeNumber } = request.params as { showId: string, seasonId: string, episodeNumber: string }
+    
+    fastify.log.info(`Fetching episode metadata for ${showId} S${seasonId}E${episodeNumber}`)
+    
+    // Get the show to retrieve its TVDB ID
+    const show = await getMediaItemByPath(showId)
+    if (!show || !show.metadata_json) {
+      fastify.log.warn(`Show not found or missing metadata: ${showId}`)
+      return reply.status(404).send({ error: 'Show metadata not found. Please fetch show metadata first.' })
+    }
+    
+    const showMetadata = JSON.parse(show.metadata_json)
+    const seriesId = showMetadata.tvdb_id
+    
+    if (!seriesId) {
+      return reply.status(404).send({ error: 'TVDB series ID not found in show metadata' })
+    }
+    
+    // Get episode from database by season and episode number
+    const seasonNumber = parseInt(seasonId)
+    const epNumber = parseInt(episodeNumber)
+    const episodes = await getTVEpisodesBySeason(show.id!, seasonNumber)
+    const episode = episodes.find(ep => ep.episode_number === epNumber)
+    
+    if (!episode) {
+      return reply.status(404).send({ error: 'Episode not found' })
+    }
+    
+    // Fetch episode metadata from TVDB
+    const { getEpisodeMetadata } = await import('./tvdb.js')
+    const { saveEpisodeThumb } = await import('./imageDownloader.js')
+    const metadata = await getEpisodeMetadata(seriesId, seasonNumber, epNumber)
+    
+    if (!metadata) {
+      fastify.log.warn(`No TVDB metadata found for episode`)
+      return reply.status(404).send({ error: 'Episode metadata not found' })
+    }
+    
+    // Save thumbnail locally if enabled
+    if (metadata.still_url) {
+      const episodePathParts = episode.file_path.split(path.sep)
+      const seasonFolder = episodePathParts[episodePathParts.length - 2]
+      const seasonPath = path.join(process.env.TV_PATH || '/tv', showId, seasonFolder)
+      const savedThumbPath = await saveEpisodeThumb(metadata.still_url, seasonPath, epNumber)
+      if (savedThumbPath !== metadata.still_url) {
+        metadata.still_url = savedThumbPath
+      }
+    }
+    
+    // Update episode with metadata
+    const { insertTVEpisode } = await import('./db.js')
+    await insertTVEpisode({
+      ...episode,
+      metadata_json: JSON.stringify(metadata)
+    })
+    
+    fastify.log.info(`Episode metadata fetched and saved: ${metadata.name}`)
+    
+    return { success: true, metadata }
+  } catch (error) {
+    fastify.log.error(error, 'Failed to fetch episode metadata')
+    return reply.status(500).send({ error: 'Failed to fetch episode metadata' })
   }
 })
 
@@ -452,6 +615,12 @@ const start = async () => {
     fastify.log.info(`Initializing database at ${dbPath}`)
     await initDatabase(dbPath)
     fastify.log.info('Database initialized successfully')
+    
+    // Clean up invalid settings (metadata stored in wrong table)
+    const cleaned = await cleanupInvalidSettings()
+    if (cleaned > 0) {
+      fastify.log.info(`Cleaned up ${cleaned} invalid settings`)
+    }
     
     // Start server first, then optionally perform initial scan in background
     await fastify.listen({ port: 3001, host: '0.0.0.0' })

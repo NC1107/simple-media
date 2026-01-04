@@ -7,6 +7,7 @@ import MovieDetail from './components/MovieDetail'
 import Books from './components/Books'
 import BookDetail from './components/BookDetail'
 import Settings from './components/Settings'
+import { ToastContainer } from './components/Toast'
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -198,6 +199,8 @@ function App() {
         
         {currentView === 'settings' && <Settings />}
       </div>
+      
+      <ToastContainer />
     </div>
   )
 }

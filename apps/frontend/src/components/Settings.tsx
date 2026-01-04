@@ -1,23 +1,29 @@
 import { useState, useEffect } from 'react'
 import { API_BASE_URL } from '../config'
+import { showToast, ConfirmDialog } from './Toast'
 
 interface SettingsState {
   movies_metadata_enabled: boolean
   tv_metadata_enabled: boolean
+  tv_episodes_metadata_enabled: boolean
   books_metadata_enabled: boolean
+  save_images_locally: boolean
 }
 
 function Settings() {
   const [settings, setSettings] = useState<SettingsState>({
     movies_metadata_enabled: false,
     tv_metadata_enabled: false,
-    books_metadata_enabled: false
+    tv_episodes_metadata_enabled: false,
+    books_metadata_enabled: false,
+    save_images_locally: false
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [clearingMovies, setClearingMovies] = useState(false)
   const [clearingTV, setClearingTV] = useState(false)
   const [clearingBooks, setClearingBooks] = useState(false)
+  const [confirmDialog, setConfirmDialog] = useState<{ type: string; isOpen: boolean }>({ type: '', isOpen: false })
 
   useEffect(() => {
     fetchSettings()
@@ -34,7 +40,9 @@ function Settings() {
       setSettings({
         movies_metadata_enabled: data.movies_metadata_enabled === 'true',
         tv_metadata_enabled: data.tv_metadata_enabled === 'true',
-        books_metadata_enabled: data.books_metadata_enabled === 'true'
+        tv_episodes_metadata_enabled: data.tv_episodes_metadata_enabled === 'true',
+        books_metadata_enabled: data.books_metadata_enabled === 'true',
+        save_images_locally: data.save_images_locally === 'true'
       })
     } catch (error) {
       console.error('Failed to fetch settings:', error)
@@ -72,17 +80,14 @@ function Settings() {
       }))
     } catch (error) {
       console.error('Failed to update setting:', error)
-      alert('Failed to update setting. Please try again.')
+      showToast('Failed to update setting. Please try again.', 'error')
     } finally {
       setSaving(false)
     }
   }
 
   const handleClearMoviesMetadata = async () => {
-    if (!confirm('Are you sure you want to clear all movie metadata? This will not delete the movies themselves.')) {
-      return
-    }
-
+    setConfirmDialog({ type: '', isOpen: false })
     setClearingMovies(true)
     try {
       const response = await fetch(`${API_BASE_URL}/api/metadata/clear/movies`, {
@@ -94,20 +99,17 @@ function Settings() {
       }
 
       const result = await response.json()
-      alert(`Movie metadata cleared successfully!\n\nCleared: ${result.cleared} items`)
+      showToast(`Movie metadata cleared: ${result.cleared} items`, 'success')
     } catch (error) {
       console.error('Failed to clear movie metadata:', error)
-      alert('Failed to clear movie metadata. Please try again.')
+      showToast('Failed to clear movie metadata. Please try again.', 'error')
     } finally {
       setClearingMovies(false)
     }
   }
 
   const handleClearTVMetadata = async () => {
-    if (!confirm('Are you sure you want to clear all TV show metadata? This will not delete the shows themselves.')) {
-      return
-    }
-
+    setConfirmDialog({ type: '', isOpen: false })
     setClearingTV(true)
     try {
       const response = await fetch(`${API_BASE_URL}/api/metadata/clear/tv`, {
@@ -119,20 +121,17 @@ function Settings() {
       }
 
       const result = await response.json()
-      alert(`TV show metadata cleared successfully!\n\nCleared: ${result.cleared} items`)
+      showToast(`TV show metadata cleared: ${result.cleared} items`, 'success')
     } catch (error) {
       console.error('Failed to clear TV metadata:', error)
-      alert('Failed to clear TV metadata. Please try again.')
+      showToast('Failed to clear TV metadata. Please try again.', 'error')
     } finally {
       setClearingTV(false)
     }
   }
 
   const handleClearBooksMetadata = async () => {
-    if (!confirm('Are you sure you want to clear all book metadata? This will not delete the books themselves.')) {
-      return
-    }
-
+    setConfirmDialog({ type: '', isOpen: false })
     setClearingBooks(true)
     try {
       const response = await fetch(`${API_BASE_URL}/api/metadata/clear/books`, {
@@ -144,10 +143,10 @@ function Settings() {
       }
 
       const result = await response.json()
-      alert(`Book metadata cleared successfully!\n\nCleared: ${result.cleared} items`)
+      showToast(`Book metadata cleared: ${result.cleared} items`, 'success')
     } catch (error) {
       console.error('Failed to clear book metadata:', error)
-      alert('Failed to clear book metadata. Please try again.')
+      showToast('Failed to clear book metadata. Please try again.', 'error')
     } finally {
       setClearingBooks(false)
     }
@@ -200,7 +199,7 @@ function Settings() {
 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
-                onClick={handleClearMoviesMetadata}
+                onClick={() => setConfirmDialog({ type: 'movie', isOpen: true })}
                 disabled={clearingMovies}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -224,7 +223,7 @@ function Settings() {
                   Enable Metadata Scanning
                 </label>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Automatically fetch TV show metadata from TMDB during library scans
+                  Automatically fetch TV show metadata from TVDB during library scans
                 </p>
               </div>
               <button
@@ -244,9 +243,35 @@ function Settings() {
               </button>
             </div>
 
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div>
+                <label className="font-medium text-gray-700 dark:text-gray-300">
+                  Enable Episode Metadata Scanning
+                </label>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Automatically fetch episode metadata from TVDB during library scans (slower)
+                </p>
+              </div>
+              <button
+                onClick={() => updateSetting('tv_episodes_metadata_enabled', !settings.tv_episodes_metadata_enabled)}
+                disabled={saving}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  settings.tv_episodes_metadata_enabled
+                    ? 'bg-blue-600'
+                    : 'bg-gray-200 dark:bg-gray-700'
+                } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.tv_episodes_metadata_enabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
-                onClick={handleClearTVMetadata}
+                onClick={() => setConfirmDialog({ type: 'TV show', isOpen: true })}
                 disabled={clearingTV}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -292,7 +317,7 @@ function Settings() {
 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
-                onClick={handleClearBooksMetadata}
+                onClick={() => setConfirmDialog({ type: 'book', isOpen: true })}
                 disabled={clearingBooks}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -305,12 +330,59 @@ function Settings() {
           </div>
         </div>
 
+        {/* General Settings */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">General</h2>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="font-medium text-gray-700 dark:text-gray-300">
+                  Save Images Locally
+                </label>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Download poster and thumbnail images alongside media files (in poster.jpg/thumb.jpg)
+                </p>
+              </div>
+              <button
+                onClick={() => updateSetting('save_images_locally', !settings.save_images_locally)}
+                disabled={saving}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  settings.save_images_locally
+                    ? 'bg-blue-600'
+                    : 'bg-gray-200 dark:bg-gray-700'
+                } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.save_images_locally ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <p className="text-sm text-blue-800 dark:text-blue-200">
             <strong>Note:</strong> These settings only affect automatic scanning. You can manually fetch metadata for individual items regardless of these settings.
           </p>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Clear Metadata?"
+        message={`Are you sure you want to clear all ${confirmDialog.type} metadata? This will not delete the ${confirmDialog.type} themselves.`}
+        onConfirm={() => {
+          if (confirmDialog.type === 'movie') handleClearMoviesMetadata()
+          else if (confirmDialog.type === 'TV show') handleClearTVMetadata()
+          else if (confirmDialog.type === 'book') handleClearBooksMetadata()
+        }}
+        onCancel={() => setConfirmDialog({ type: '', isOpen: false })}
+        confirmText="Clear Metadata"
+        cancelText="Cancel"
+      />
     </div>
   )
 }

@@ -23,6 +23,7 @@ export interface TVEpisode {
   file_path: string
   file_size: number
   last_scanned: number
+  metadata_json?: string
 }
 
 let db: Database | null = null
@@ -58,9 +59,17 @@ export async function initDatabase(dbPath: string): Promise<Database> {
       file_path TEXT NOT NULL UNIQUE,
       file_size INTEGER NOT NULL,
       last_scanned INTEGER NOT NULL,
+      metadata_json TEXT,
       FOREIGN KEY (show_id) REFERENCES media_items(id) ON DELETE CASCADE
     )
   `)
+  
+  // Migration: Add metadata_json column if it doesn't exist
+  try {
+    await client.execute(`ALTER TABLE tv_episodes ADD COLUMN metadata_json TEXT`)
+  } catch (e) {
+    // Column already exists, ignore error
+  }
   
   await client.execute(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -107,9 +116,9 @@ export async function insertMediaItem(item: MediaItem): Promise<number> {
 export async function insertTVEpisode(episode: TVEpisode): Promise<void> {
   const database = getDatabase()
   await database.db.execute({
-    sql: `INSERT OR REPLACE INTO tv_episodes (show_id, season_number, episode_number, title, file_path, file_size, last_scanned)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    args: [episode.show_id, episode.season_number, episode.episode_number, episode.title, episode.file_path, episode.file_size, episode.last_scanned]
+    sql: `INSERT OR REPLACE INTO tv_episodes (show_id, season_number, episode_number, title, file_path, file_size, last_scanned, metadata_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [episode.show_id, episode.season_number, episode.episode_number, episode.title, episode.file_path, episode.file_size, episode.last_scanned, episode.metadata_json || null]
   })
 }
 
@@ -188,4 +197,15 @@ export async function getAllSettings(): Promise<Record<string, string>> {
     settings[row.key] = row.value
   }
   return settings
+}
+
+export async function cleanupInvalidSettings(): Promise<number> {
+  const database = getDatabase()
+  // Remove any settings that start with "movie_metadata_", "tv_metadata_", or "book_metadata_"
+  // These should be in media_items table, not settings
+  const result = await database.db.execute({
+    sql: "DELETE FROM settings WHERE key LIKE 'movie_metadata_%' OR key LIKE 'tv_metadata_%' OR key LIKE 'book_metadata_%'",
+    args: []
+  })
+  return result.rowsAffected || 0
 }

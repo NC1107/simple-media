@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { API_BASE_URL } from '../config'
+import { showToast } from './Toast'
 
 interface Movie {
   id: string
@@ -61,13 +62,13 @@ export default function Movies({ onMovieSelect }: MoviesProps) {
       }
 
       const result = await response.json()
-      alert(`Movies scan completed!\n\nAdded: ${result.added}\nUpdated: ${result.updated}`)
+      showToast(`Movies scan completed! Added: ${result.added}, Updated: ${result.updated}`, 'success')
       
       // Refresh the movies list
       await fetchMovies()
     } catch (error) {
       console.error('Movies scan failed:', error)
-      alert('Failed to scan movies. Check console for details.')
+      showToast('Failed to scan movies. Check console for details.', 'error')
     } finally {
       setScanning(false)
     }

@@ -2,6 +2,8 @@ import fs from 'fs/promises'
 import path from 'path'
 import { insertMediaItem, insertTVEpisode, getMediaItemByPath, getSetting } from './db.js'
 import { searchMovie, parseMovieTitle } from './tmdb.js'
+import { searchTVShow, parseTVShowTitle, getEpisodeMetadata } from './tvdb.js'
+import { saveMoviePoster, saveTVShowPoster, saveEpisodeThumb } from './imageDownloader.js'
 
 interface ScanResult {
   added: number
@@ -40,13 +42,47 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
       const relativePath = showEntry.name
       
       try {
-        // Insert or update show
+        // Check if metadata scanning is enabled
+        const metadataEnabled = await getSetting('tv_metadata_enabled')
+        const shouldFetchMetadata = metadataEnabled === 'true'
+        
+        // Fetch metadata from TVDB if enabled and not already cached
         const existingShow = await getMediaItemByPath(relativePath)
+        let metadataJson = existingShow?.metadata_json
+        
+        if (!metadataJson && shouldFetchMetadata) {
+          console.log(`Fetching TVDB metadata for show: ${showEntry.name}`)
+          const { title: cleanTitle, year } = parseTVShowTitle(showEntry.name)
+          console.log(`Parsed title: "${cleanTitle}", year: ${year}`)
+          const metadata = await searchTVShow(cleanTitle, year)
+          if (metadata) {
+            // Save poster locally if enabled
+            if (metadata.poster_url) {
+              const savedPosterPath = await saveTVShowPoster(metadata.poster_url, showPath)
+              // Update metadata with local path if image was saved
+              if (savedPosterPath !== metadata.poster_url) {
+                metadata.poster_url = savedPosterPath
+              }
+            }
+            
+            metadataJson = JSON.stringify(metadata)
+            console.log(`Cached TVDB metadata for: ${metadata.title}`)
+          } else {
+            console.log(`No TVDB metadata found for: ${showEntry.name}`)
+          }
+        } else if (!metadataJson) {
+          console.log(`Metadata scanning disabled for TV shows, skipping: ${showEntry.name}`)
+        } else {
+          console.log(`Using cached metadata for: ${showEntry.name}`)
+        }
+        
+        // Insert or update show
         const showId = await insertMediaItem({
           type: 'tv_show',
           title: showEntry.name,
           path: relativePath,
-          last_scanned: now
+          last_scanned: now,
+          metadata_json: metadataJson
         })
         
         if (existingShow) {
@@ -58,6 +94,21 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
         // Scan seasons
         const seasons = await fs.readdir(showPath, { withFileTypes: true })
         
+        // Check if episode metadata scanning is enabled
+        const episodesMetadataEnabled = await getSetting('tv_episodes_metadata_enabled')
+        const shouldFetchEpisodeMetadata = episodesMetadataEnabled === 'true'
+        
+        // Get the series ID for episode metadata
+        let seriesId: string | null = null
+        if (shouldFetchEpisodeMetadata && metadataJson) {
+          try {
+            const showMetadata = JSON.parse(metadataJson)
+            seriesId = showMetadata.tvdb_id
+          } catch (e) {
+            console.error('Failed to parse show metadata:', e)
+          }
+        }
+        
         for (const seasonEntry of seasons) {
           if (!seasonEntry.isDirectory() || !/season\s*\d+/i.test(seasonEntry.name)) continue
           
@@ -65,9 +116,9 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
           const seasonNumber = seasonMatch ? parseInt(seasonMatch[1]) : 0
           
           const seasonPath = path.join(showPath, seasonEntry.name)
-          const episodes = await fs.readdir(seasonPath, { withFileTypes: true })
+          const episodeFiles = await fs.readdir(seasonPath, { withFileTypes: true })
           
-          for (const episodeEntry of episodes) {
+          for (const episodeEntry of episodeFiles) {
             if (episodeEntry.isDirectory()) continue
             
             const ext = path.extname(episodeEntry.name).toLowerCase()
@@ -81,6 +132,30 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
             const episodePath = path.join(seasonPath, episodeEntry.name)
             const fileSize = await getFileSize(episodePath)
             
+            // Fetch episode metadata if enabled
+            let episodeMetadataJson: string | undefined = undefined
+            if (shouldFetchEpisodeMetadata && seriesId && episodeNumber > 0) {
+              console.log(`Fetching episode metadata for S${seasonNumber}E${episodeNumber}`)
+              const episodeMetadata = await getEpisodeMetadata(seriesId, seasonNumber, episodeNumber)
+              if (episodeMetadata) {
+                // Save thumbnail locally if enabled
+                if (episodeMetadata.still_url) {
+                  const savedThumbPath = await saveEpisodeThumb(
+                    episodeMetadata.still_url,
+                    seasonPath,
+                    episodeNumber
+                  )
+                  // Update metadata with local path if image was saved
+                  if (savedThumbPath !== episodeMetadata.still_url) {
+                    episodeMetadata.still_url = savedThumbPath
+                  }
+                }
+                
+                episodeMetadataJson = JSON.stringify(episodeMetadata)
+                console.log(`Cached episode metadata: ${episodeMetadata.name}`)
+              }
+            }
+            
             await insertTVEpisode({
               show_id: showId,
               season_number: seasonNumber,
@@ -88,11 +163,13 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
               title: episodeEntry.name,
               file_path: path.join(relativePath, seasonEntry.name, episodeEntry.name),
               file_size: fileSize,
-              last_scanned: now
+              last_scanned: now,
+              metadata_json: episodeMetadataJson
             })
           }
         }
       } catch (error) {
+        console.error(`Error scanning show ${showEntry.name}:`, error)
         result.errors.push(`Error scanning show ${showEntry.name}: ${error}`)
       }
     }
