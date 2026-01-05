@@ -2,9 +2,16 @@
 
 A lightweight media management system for organizing TV shows, movies, and books.
 
-## Dashboard
+## Screenshots
 
+### Dashboard
 ![Dashboard Screenshot](docs/dashboard-screenshot.png)
+
+### Movie Details
+![Movie Details Screenshot](docs/movie-details.png)
+
+### Episode Details
+![Episode Details Screenshot](docs/episode-details.png)
 
 ## Overview
 
