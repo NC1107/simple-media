@@ -210,23 +210,23 @@ function Settings() {
 
   if (loading) {
     return (
-      <div className="p-8">
-        <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Settings</h1>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Settings</h1>
         <div className="text-gray-600 dark:text-gray-400">Loading settings...</div>
       </div>
     )
   }
 
   return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-100">Settings</h1>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100">Settings</h1>
 
-      <div className="max-w-3xl space-y-6">
+      <div className="max-w-3xl space-y-4">
         {/* Movies Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Movies</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">Movies</h2>
           
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <label className="font-medium text-gray-700 dark:text-gray-300">
@@ -253,12 +253,12 @@ function Settings() {
               </button>
             </div>
 
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="mb-4">
+            <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="mb-3">
                 <button
                   onClick={handleTestTMDB}
                   disabled={testingTMDB}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
                 >
                   {testingTMDB ? 'Testing...' : 'Test TMDB Connection'}
                 </button>
@@ -286,11 +286,11 @@ function Settings() {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setConfirmDialog({ type: 'movie', isOpen: true })}
                   disabled={clearingMovies}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                 >
                   {clearingMovies ? 'Clearing...' : 'Clear Movie Metadata'}
                 </button>
@@ -303,10 +303,10 @@ function Settings() {
         </div>
 
         {/* TV Shows Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">TV Shows</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">TV Shows</h2>
           
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <label className="font-medium text-gray-700 dark:text-gray-300">
@@ -333,7 +333,7 @@ function Settings() {
               </button>
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
               <div>
                 <label className="font-medium text-gray-700 dark:text-gray-300">
                   Enable Episode Metadata Scanning
@@ -359,12 +359,12 @@ function Settings() {
               </button>
             </div>
 
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="mb-4">
+            <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="mb-3">
                 <button
                   onClick={handleTestTVDB}
                   disabled={testingTVDB}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
                 >
                   {testingTVDB ? 'Testing...' : 'Test TVDB Connection'}
                 </button>
@@ -392,11 +392,11 @@ function Settings() {
                 )}
               </div>
 
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => setConfirmDialog({ type: 'TV show', isOpen: true })}
                   disabled={clearingTV}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                 >
                   {clearingTV ? 'Clearing...' : 'Clear TV Show Metadata'}
                 </button>
@@ -409,10 +409,10 @@ function Settings() {
         </div>
 
         {/* Books Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">Books</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">Books</h2>
           
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <label className="font-medium text-gray-700 dark:text-gray-300">
@@ -439,11 +439,11 @@ function Settings() {
               </button>
             </div>
 
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => setConfirmDialog({ type: 'book', isOpen: true })}
                 disabled={clearingBooks}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
               >
                 {clearingBooks ? 'Clearing...' : 'Clear Book Metadata'}
               </button>
@@ -455,10 +455,10 @@ function Settings() {
         </div>
 
         {/* General Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">General</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">General</h2>
           
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
                 <label className="font-medium text-gray-700 dark:text-gray-300">
@@ -487,7 +487,7 @@ function Settings() {
           </div>
         </div>
 
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
           <p className="text-sm text-blue-800 dark:text-blue-200">
             <strong>Note:</strong> These settings only affect automatic scanning. You can manually fetch metadata for individual items regardless of these settings.
           </p>
