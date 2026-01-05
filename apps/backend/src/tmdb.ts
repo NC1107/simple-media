@@ -1,5 +1,5 @@
 import fetch from 'node-fetch'
-import type { MovieMetadata, ApiConnectionTestResult } from '@simple-media/types'
+import type { MovieMetadata, ApiConnectionTestResult } from './types.js'
 
 // Re-export for use by other modules
 export type { MovieMetadata }

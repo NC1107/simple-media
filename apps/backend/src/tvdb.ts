@@ -1,5 +1,5 @@
 import fetch from 'node-fetch'
-import type { TVShowMetadata, EpisodeMetadata, ApiConnectionTestResult } from '@simple-media/types'
+import type { TVShowMetadata, EpisodeMetadata, ApiConnectionTestResult } from './types.js'
 
 // Re-export for use by other modules
 export type { TVShowMetadata, EpisodeMetadata }

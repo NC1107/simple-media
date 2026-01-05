@@ -1,5 +1,5 @@
 import { createClient } from '@libsql/client'
-import type { MediaItem, TVEpisode, MediaStats } from '@simple-media/types'
+import type { MediaItem, TVEpisode } from './types.js'
 
 // Re-export types for use by other modules
 export type { MediaItem, TVEpisode }

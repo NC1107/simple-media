@@ -9,17 +9,13 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./dist",
+        "rootDir": "./src",
         "declaration": true,
         "declarationMap": true,
-        "sourceMap": true,
-        "paths": {
-            "@simple-media/types": ["../../packages/types/src/index.ts"]
-        },
-        "baseUrl": "."
+        "sourceMap": true
     },
     "include": [
-        "src/**/*",
-        "../../packages/types/src/**/*"
+        "src/**/*"
     ],
     "exclude": [
         "node_modules",
