@@ -20,7 +20,33 @@ I understand the need for seperation at times, but I do not understand the need 
 a different type of media.
 
 ## Features
-- None :)
+
+### Media Management
+- **TV Shows**: Automatic metadata fetching from TVDB, episode tracking, season organization
+- **Movies**: TMDB integration for posters, descriptions, and ratings
+- **Books**: Support for ebooks and audiobooks organized by author and series
+
+### Metadata
+- Manual metadata refresh per item or bulk operations
+- Clear and re-fetch metadata when needed
+- Local metadata caching to reduce API calls
+- Poster/cover art display
+
+### Scanning
+- Real-time scan progress with visual indicators on grid items
+- Individual or full library scans
+- File system monitoring for new media
+
+### Media Details
+- Episode-level viewing for TV shows with TVDB metadata integration
+- Season and episode organization
+- Play/download links (when paths are accessible)
+
+### Settings
+- TVDB and TMDB API key configuration
+- Library path management for TV, movies, and books
+- Bulk metadata operations
+- Test API connectivity
 
 ## Current Goal
 
