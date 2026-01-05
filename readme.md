@@ -63,9 +63,8 @@ a different type of media.
 
 ## Current Goal
 
-Right now, I want to be able to determine my tech stack, I think its going to have to be react, js and the first thing we
-are going to want to be able to do is create a simple pipeline that builds this project into a docker container that
-we can deploy through a compose and be able to access a website through localhost at a certain port.
+Currently this is basically a glorified media scanner with metadata fetching and a frontend to view the media. my goal is
+to be able to write this data to the files media files and cleanup the library structure after scanning and fetching metadata.
 
 ## Current Goal TLDR
 
