@@ -1,4 +1,4 @@
-FROM node:18-alpine as base
+FROM node:18-alpine AS base
 
 WORKDIR /app
 
@@ -6,20 +6,20 @@ WORKDIR /app
 COPY package*.json ./
 
 # Development stage
-FROM base as dev
+FROM base AS dev
 RUN npm ci
 COPY . .
 EXPOSE 3001
 CMD ["npm", "run", "dev"]
 
 # Build stage
-FROM base as build
+FROM base AS build
 RUN npm ci
 COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine as prod
+FROM node:18-alpine AS prod
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev

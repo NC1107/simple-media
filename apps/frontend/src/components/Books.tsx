@@ -23,6 +23,7 @@ export default function Books({ onBookSelect }: BooksProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [justScanned, setJustScanned] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchBooks()
@@ -48,6 +49,42 @@ export default function Books({ onBookSelect }: BooksProps) {
 
   const handleScan = async () => {
     setScanning(true)
+    setJustScanned(new Set())
+    
+    // Connect to SSE endpoint for progress updates
+    const eventSource = new EventSource(`${API_BASE_URL}/api/scan/progress`)
+    
+    eventSource.onmessage = async (event) => {
+      const data = JSON.parse(event.data)
+      
+      if (data.type === 'scanned' && data.category === 'books') {
+        // Refresh the books list to get updated data
+        const response = await fetch(`${API_BASE_URL}/api/books`)
+        const booksData: BooksResponse = await response.json()
+        setBooks(booksData.books || [])
+        
+        // Find the book that was just scanned and mark it
+        const scannedBook = (booksData.books || []).find(b => data.item.includes(b.name))
+        if (scannedBook) {
+          setJustScanned(prev => new Set([...prev, scannedBook.id]))
+          // Remove the indicator after 2 seconds
+          setTimeout(() => {
+            setJustScanned(prev => {
+              const next = new Set(prev)
+              next.delete(scannedBook.id)
+              return next
+            })
+          }, 2000)
+        }
+      } else if (data.type === 'complete') {
+        eventSource.close()
+      }
+    }
+    
+    eventSource.onerror = () => {
+      eventSource.close()
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/scan/books`, {
         method: 'POST'
@@ -60,13 +97,14 @@ export default function Books({ onBookSelect }: BooksProps) {
       const result = await response.json()
       showToast(`Books scan completed! Added: ${result.added}, Updated: ${result.updated}`, 'success')
       
-      // Refresh the books list
+      // Final refresh
       await fetchBooks()
     } catch (error) {
       console.error('Books scan failed:', error)
       showToast('Failed to scan books. Check console for details.', 'error')
     } finally {
       setScanning(false)
+      eventSource.close()
     }
   }
 
@@ -112,11 +150,16 @@ export default function Books({ onBookSelect }: BooksProps) {
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {books.map((book) => (
+        {books.map((book) => {
+          const isJustScanned = justScanned.has(book.id)
+          
+          return (
           <div
             key={book.id}
             onClick={() => onBookSelect(book.id)}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-4 cursor-pointer"
+            className={`bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all p-4 cursor-pointer ${
+              isJustScanned ? 'ring-4 ring-green-500 ring-opacity-50' : ''
+            }`}
           >
             <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded mb-2 flex items-center justify-center">
               <svg
@@ -137,7 +180,8 @@ export default function Books({ onBookSelect }: BooksProps) {
               {book.name}
             </h3>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-FROM node:18-alpine as base
+FROM node:18-alpine AS base
 
 WORKDIR /app
 
@@ -10,15 +10,15 @@ RUN npm ci
 COPY . .
 
 # Development stage
-FROM base as dev
+FROM base AS dev
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 # Production stage  
-FROM base as prod
+FROM base AS prod
 RUN npm run build
 
-FROM nginx:alpine as production
+FROM nginx:alpine AS production
 COPY --from=prod /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/nginx.conf
 EXPOSE 80

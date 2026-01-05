@@ -6,7 +6,7 @@ interface Database {
 
 export interface MediaItem {
   id?: number
-  type: 'tv_show' | 'movie' | 'book' | 'audiobook' | 'ebook'
+  type: 'tv_show' | 'movie' | 'audiobook' | 'ebook'
   title: string
   path: string
   file_size?: number
@@ -201,10 +201,14 @@ export async function getMediaStats(): Promise<{ tvShows: number; movies: number
   const result = await database.db.execute('SELECT type, COUNT(*) as count FROM media_items GROUP BY type')
   const stats = result.rows as Array<{ type: string; count: number }>
   
+  // Books are stored as 'audiobook' or 'ebook' types
+  const audiobookCount = stats.find(s => s.type === 'audiobook')?.count || 0
+  const ebookCount = stats.find(s => s.type === 'ebook')?.count || 0
+  
   return {
     tvShows: stats.find(s => s.type === 'tv_show')?.count || 0,
     movies: stats.find(s => s.type === 'movie')?.count || 0,
-    books: stats.find(s => s.type === 'book')?.count || 0
+    books: audiobookCount + ebookCount
   }
 }
 

@@ -1,25 +1,7 @@
 import { useState, useEffect } from 'react'
 import { API_BASE_URL } from '../config'
 import { showToast } from './Toast'
-
-// Helper function to resolve image URLs (local vs remote)
-function resolveImageUrl(imagePath: string | null, showPath: string, seasonNumber?: number): string | undefined {
-  if (!imagePath) return undefined
-  
-  // If it's already a full URL, return as-is
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath
-  }
-  
-  // It's a local path, construct API URL
-  if (seasonNumber !== undefined) {
-    // Episode thumbnail
-    return `${API_BASE_URL}/api/images/tv/${encodeURIComponent(showPath)}/Season ${seasonNumber}/${imagePath}`
-  } else {
-    // Show poster
-    return `${API_BASE_URL}/api/images/tv/${encodeURIComponent(showPath)}/${imagePath}`
-  }
-}
+import { resolveImageUrl } from '../utils/imageUrl'
 
 interface TVShowDetailProps {
   showId: string
@@ -81,6 +63,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
   const [expandedSeasons, setExpandedSeasons] = useState<{ [seasonId: string]: boolean }>({})
   const [loading, setLoading] = useState(true)
   const [fetchingMetadata, setFetchingMetadata] = useState(false)
+  const [clearingMetadata, setClearingMetadata] = useState(false)
   const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null)
   const [episodeMetadata, setEpisodeMetadata] = useState<EpisodeMetadata | null>(null)
   const [fetchingEpisodeMetadata, setFetchingEpisodeMetadata] = useState(false)
@@ -173,6 +156,41 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
     }
   }
 
+  const handleClearMetadata = async () => {
+    if (!show) return
+    
+    setClearingMetadata(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tv-shows/${encodeURIComponent(show.id)}/metadata/clear`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to clear metadata')
+      }
+
+      const result = await response.json()
+      setMetadata(null)
+      
+      // Clear episode metadata from state
+      const clearedEpisodes: { [seasonId: string]: Episode[] } = {}
+      Object.entries(episodes).forEach(([seasonId, eps]) => {
+        clearedEpisodes[seasonId] = eps.map(ep => ({ ...ep, metadata_json: undefined }))
+      })
+      setEpisodes(clearedEpisodes)
+      
+      // Re-fetch show details to get updated state from database
+      await fetchShowDetails()
+      
+      showToast(`Metadata cleared for ${show.name} (${result.cleared} items)`, 'success')
+    } catch (error) {
+      console.error('Failed to clear metadata:', error)
+      showToast(`Failed to clear metadata for ${show.name}`, 'error')
+    } finally {
+      setClearingMetadata(false)
+    }
+  }
+
   const handleEpisodeClick = (episode: Episode) => {
     setSelectedEpisode(episode)
     
@@ -199,7 +217,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
       )?.[0].match(/(\d+)/)?.[1] || '1'
       
       const response = await fetch(
-        `${API_BASE_URL}/api/tv-shows/${encodeURIComponent(show.path)}/seasons/${seasonNumber}/episodes/${selectedEpisode.episodeNumber}/metadata`,
+        `${API_BASE_URL}/api/tv-shows/${encodeURIComponent(show.id)}/seasons/${seasonNumber}/episodes/${selectedEpisode.episodeNumber}/metadata`,
         { method: 'POST' }
       )
 
@@ -300,13 +318,24 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
           <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Metadata</h3>
-              <button
-                onClick={handleFetchMetadata}
-                disabled={fetchingMetadata}
-                className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-              >
-                {fetchingMetadata ? 'Fetching...' : metadata ? 'Refresh' : 'Fetch'}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleFetchMetadata}
+                  disabled={fetchingMetadata}
+                  className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {fetchingMetadata ? 'Fetching...' : metadata ? 'Refresh' : 'Fetch'}
+                </button>
+                {metadata && (
+                  <button
+                    onClick={handleClearMetadata}
+                    disabled={clearingMetadata}
+                    className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {clearingMetadata ? 'Clearing...' : 'Clear'}
+                  </button>
+                )}
+              </div>
             </div>
             {metadata ? (
               <dl className="space-y-2 text-xs">

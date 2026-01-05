@@ -27,6 +27,7 @@ export default function Movies({ onMovieSelect }: MoviesProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [justScanned, setJustScanned] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchMovies()
@@ -52,6 +53,42 @@ export default function Movies({ onMovieSelect }: MoviesProps) {
 
   const handleScan = async () => {
     setScanning(true)
+    setJustScanned(new Set())
+    
+    // Connect to SSE endpoint for progress updates
+    const eventSource = new EventSource(`${API_BASE_URL}/api/scan/progress`)
+    
+    eventSource.onmessage = async (event) => {
+      const data = JSON.parse(event.data)
+      
+      if (data.type === 'scanned' && data.category === 'movies') {
+        // Refresh the movies list to get updated data
+        const response = await fetch(`${API_BASE_URL}/api/movies`)
+        const moviesData: MoviesResponse = await response.json()
+        setMovies(moviesData.movies || [])
+        
+        // Find the movie that was just scanned and mark it
+        const scannedMovie = (moviesData.movies || []).find(m => m.name === data.item || data.item.includes(m.name))
+        if (scannedMovie) {
+          setJustScanned(prev => new Set([...prev, scannedMovie.id]))
+          // Remove the indicator after 2 seconds
+          setTimeout(() => {
+            setJustScanned(prev => {
+              const next = new Set(prev)
+              next.delete(scannedMovie.id)
+              return next
+            })
+          }, 2000)
+        }
+      } else if (data.type === 'complete') {
+        eventSource.close()
+      }
+    }
+    
+    eventSource.onerror = () => {
+      eventSource.close()
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/scan/movies`, {
         method: 'POST'
@@ -64,13 +101,14 @@ export default function Movies({ onMovieSelect }: MoviesProps) {
       const result = await response.json()
       showToast(`Movies scan completed! Added: ${result.added}, Updated: ${result.updated}`, 'success')
       
-      // Refresh the movies list
+      // Final refresh
       await fetchMovies()
     } catch (error) {
       console.error('Movies scan failed:', error)
       showToast('Failed to scan movies. Check console for details.', 'error')
     } finally {
       setScanning(false)
+      eventSource.close()
     }
   }
 
@@ -116,11 +154,16 @@ export default function Movies({ onMovieSelect }: MoviesProps) {
       </div>
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {movies.map((movie) => (
+        {movies.map((movie) => {
+          const isJustScanned = justScanned.has(movie.id)
+          
+          return (
           <div
             key={movie.id}
             onClick={() => onMovieSelect(movie.id)}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
+            className={`bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all overflow-hidden cursor-pointer ${
+              isJustScanned ? 'ring-4 ring-green-500 ring-opacity-50' : ''
+            }`}
           >
             <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
               {movie.metadata?.poster_url ? (
@@ -151,7 +194,8 @@ export default function Movies({ onMovieSelect }: MoviesProps) {
               </h3>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

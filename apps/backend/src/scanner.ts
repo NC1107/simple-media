@@ -11,6 +11,19 @@ interface ScanResult {
   errors: string[]
 }
 
+type ProgressCallback = (data: any) => void
+let progressCallback: ProgressCallback | null = null
+
+export function setProgressCallback(callback: ProgressCallback | null) {
+  progressCallback = callback
+}
+
+function emitProgress(data: any) {
+  if (progressCallback) {
+    progressCallback(data)
+  }
+}
+
 async function getFileSize(filePath: string): Promise<number> {
   try {
     const stats = await fs.stat(filePath)
@@ -52,6 +65,7 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
         
         if (!metadataJson && shouldFetchMetadata) {
           console.log(`Fetching TVDB metadata for show: ${showEntry.name}`)
+          emitProgress({ type: 'scanning', category: 'tv', item: showEntry.name, status: 'fetching_metadata' })
           const { title: cleanTitle, year } = parseTVShowTitle(showEntry.name)
           console.log(`Parsed title: "${cleanTitle}", year: ${year}`)
           const metadata = await searchTVShow(cleanTitle, year)
@@ -67,13 +81,17 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
             
             metadataJson = JSON.stringify(metadata)
             console.log(`Cached TVDB metadata for: ${metadata.title}`)
+            emitProgress({ type: 'scanned', category: 'tv', item: showEntry.name, status: 'metadata_fetched', title: metadata.title })
           } else {
             console.log(`No TVDB metadata found for: ${showEntry.name}`)
+            emitProgress({ type: 'scanned', category: 'tv', item: showEntry.name, status: 'no_metadata' })
           }
         } else if (!metadataJson) {
           console.log(`Metadata scanning disabled for TV shows, skipping: ${showEntry.name}`)
+          emitProgress({ type: 'scanned', category: 'tv', item: showEntry.name, status: 'skipped' })
         } else {
           console.log(`Using cached metadata for: ${showEntry.name}`)
+          emitProgress({ type: 'scanned', category: 'tv', item: showEntry.name, status: 'cached' })
         }
         
         // Insert or update show
@@ -248,19 +266,24 @@ export async function scanMovies(moviesPath: string, skipMetadata = false): Prom
         let metadataJson = existingMovie?.metadata_json
         if (!metadataJson && shouldFetchMetadata) {
           console.log(`Fetching TMDB metadata for movie: ${title}`)
+          emitProgress({ type: 'scanning', category: 'movies', item: title, status: 'fetching_metadata' })
           const { title: cleanTitle, year } = parseMovieTitle(title)
           console.log(`Parsed title: "${cleanTitle}", year: ${year}`)
           const metadata = await searchMovie(cleanTitle, year)
           if (metadata) {
             metadataJson = JSON.stringify(metadata)
             console.log(`Cached TMDB metadata for: ${metadata.title}`)
+            emitProgress({ type: 'scanned', category: 'movies', item: title, status: 'metadata_fetched', title: metadata.title })
           } else {
             console.log(`No TMDB metadata found for: ${title}`)
+            emitProgress({ type: 'scanned', category: 'movies', item: title, status: 'no_metadata' })
           }
         } else if (!metadataJson) {
           console.log(`Metadata scanning disabled for movies, skipping: ${title}`)
+          emitProgress({ type: 'scanned', category: 'movies', item: title, status: 'skipped' })
         } else {
           console.log(`Using cached metadata for: ${title}`)
+          emitProgress({ type: 'scanned', category: 'movies', item: title, status: 'cached' })
         }
         
         await insertMediaItem({
@@ -364,8 +387,20 @@ export async function scanBooks(booksPath: string): Promise<ScanResult> {
           
           if (existingBook) {
             result.updated++
+            emitProgress({
+              type: 'scanned',
+              category: 'books',
+              item: `${authorDir.name} - ${seriesDir.name}`,
+              status: 'cached'
+            })
           } else {
             result.added++
+            emitProgress({
+              type: 'scanned',
+              category: 'books',
+              item: `${authorDir.name} - ${seriesDir.name}`,
+              status: 'added'
+            })
           }
           
           console.log(`  [${mediaType}] ${authorDir.name} - ${seriesDir.name}`)

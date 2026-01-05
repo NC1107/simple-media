@@ -3,7 +3,7 @@ import cors from '@fastify/cors'
 import path from 'path'
 import fs from 'fs/promises'
 import { initDatabase, getMediaItemsByType, getMediaItemByPath, getMediaItemByIdOrPath, getTVEpisodesBySeason, getMediaStats, getAllSettings, setSetting, getSetting, getDatabase, cleanupInvalidSettings } from './db.js'
-import { scanAllMedia, scanMovies, scanTVShows, scanBooks } from './scanner.js'
+import { scanAllMedia, scanMovies, scanTVShows, scanBooks, setProgressCallback } from './scanner.js'
 import { searchMovie, parseMovieTitle } from './tmdb.js'
 
 const fastify = Fastify({
@@ -28,7 +28,7 @@ fastify.get('/api/images/:mediaType/:itemPath/*', async (request, reply) => {
     
     let basePath = ''
     if (mediaType === 'tv') {
-      basePath = process.env.TV_PATH || '/tv'
+      basePath = process.env.TV_SHOWS_PATH || '/tv'
     } else if (mediaType === 'movies') {
       basePath = process.env.MOVIES_PATH || '/movies'
     } else if (mediaType === 'books') {
@@ -180,7 +180,10 @@ fastify.get('/api/movies', async (request, reply) => {
 // Get books from media directory
 fastify.get('/api/books', async (request, reply) => {
   try {
-    const books = await getMediaItemsByType('book')
+    // Books are stored as 'audiobook' or 'ebook' types
+    const audiobooks = await getMediaItemsByType('audiobook')
+    const ebooks = await getMediaItemsByType('ebook')
+    const books = [...audiobooks, ...ebooks]
     
     return { 
       books: books.map(book => ({
@@ -327,7 +330,7 @@ fastify.post('/api/tv-shows/:showId/metadata', async (request, reply) => {
     
     // Save poster locally if enabled
     if (metadata.poster_url) {
-      const showPath = path.join(process.env.TV_PATH || '/tv', showId)
+      const showPath = path.join(process.env.TV_SHOWS_PATH || '/tv', showId)
       const savedPosterPath = await saveTVShowPoster(metadata.poster_url, showPath)
       if (savedPosterPath !== metadata.poster_url) {
         metadata.poster_url = savedPosterPath
@@ -361,25 +364,37 @@ fastify.post('/api/tv-shows/:showId/seasons/:seasonId/episodes/:episodeNumber/me
     
     // Get the show to retrieve its TVDB ID
     const show = await getMediaItemByIdOrPath(showId)
-    if (!show || !show.metadata_json) {
-      fastify.log.warn(`Show not found or missing metadata: ${showId}`)
+    fastify.log.info(`Show lookup result for ${showId}: ${show ? `Found: ${show.title} (ID: ${show.id})` : 'Not found'}`)
+    if (!show) {
+      fastify.log.warn(`Show not found with ID: ${showId}`)
+      return reply.status(404).send({ error: 'Show not found' })
+    }
+    
+    fastify.log.info(`Show metadata_json: ${show.metadata_json ? 'Present' : 'Missing'}`)
+    if (!show.metadata_json) {
+      fastify.log.warn(`Show ${showId} (${show.title}) has no metadata. Please fetch show metadata first.`)
       return reply.status(404).send({ error: 'Show metadata not found. Please fetch show metadata first.' })
     }
     
     const showMetadata = JSON.parse(show.metadata_json)
     const seriesId = showMetadata.tvdb_id
     
+    fastify.log.info(`Parsed show metadata - TVDB ID: ${seriesId}`)
     if (!seriesId) {
+      fastify.log.warn(`No TVDB series ID found in show metadata`)
       return reply.status(404).send({ error: 'TVDB series ID not found in show metadata' })
     }
     
     // Get episode from database by season and episode number
     const seasonNumber = parseInt(seasonId)
     const epNumber = parseInt(episodeNumber)
+    fastify.log.info(`Looking for episode: show_id=${show.id}, season=${seasonNumber}, episode=${epNumber}`)
     const episodes = await getTVEpisodesBySeason(show.id!, seasonNumber)
+    fastify.log.info(`Found ${episodes.length} episodes in season ${seasonNumber}`)
     const episode = episodes.find(ep => ep.episode_number === epNumber)
     
     if (!episode) {
+      fastify.log.warn(`Episode not found: S${seasonNumber}E${epNumber}`)
       return reply.status(404).send({ error: 'Episode not found' })
     }
     
@@ -395,9 +410,10 @@ fastify.post('/api/tv-shows/:showId/seasons/:seasonId/episodes/:episodeNumber/me
     
     // Save thumbnail locally if enabled
     if (metadata.still_url) {
-      const episodePathParts = episode.file_path.split(path.sep)
+      // Split on both forward and backslashes for cross-platform compatibility
+      const episodePathParts = episode.file_path.split(/[\/\\]/)
       const seasonFolder = episodePathParts[episodePathParts.length - 2]
-      const seasonPath = path.join(process.env.TV_PATH || '/tv', showId, seasonFolder)
+      const seasonPath = path.join(process.env.TV_SHOWS_PATH || '/tv', show.path, seasonFolder)
       const savedThumbPath = await saveEpisodeThumb(metadata.still_url, seasonPath, epNumber)
       if (savedThumbPath !== metadata.still_url) {
         metadata.still_url = savedThumbPath
@@ -454,8 +470,19 @@ fastify.post('/api/scan', async (request, reply) => {
     const booksPath = process.env.BOOKS_PATH || '/books'
     
     fastify.log.info('Starting media scan...')
+    
+    // Set up progress callback
+    setProgressCallback((data) => {
+      emitScanProgress(data)
+    })
+    
     const results = await scanAllMedia(tvPath, moviesPath, booksPath, false)  // Allow metadata on manual scan
+    
+    // Clear progress callback
+    setProgressCallback(null)
+    
     fastify.log.info('Media scan completed')
+    emitScanProgress({ type: 'complete', results })
     
     return { 
       success: true,
@@ -479,8 +506,36 @@ fastify.post('/api/scan', async (request, reply) => {
     }
   } catch (error) {
     fastify.log.error(error)
+    setProgressCallback(null)
     return reply.status(500).send({ error: 'Failed to scan media directories' })
   }
+})
+
+// SSE endpoint for scan progress
+let scanProgressListeners: Array<(data: any) => void> = []
+
+export function emitScanProgress(data: any) {
+  scanProgressListeners.forEach(listener => listener(data))
+}
+
+fastify.get('/api/scan/progress', async (request, reply) => {
+  reply.raw.setHeader('Content-Type', 'text/event-stream')
+  reply.raw.setHeader('Cache-Control', 'no-cache')
+  reply.raw.setHeader('Connection', 'keep-alive')
+  
+  const listener = (data: any) => {
+    reply.raw.write(`data: ${JSON.stringify(data)}\n\n`)
+  }
+  
+  scanProgressListeners.push(listener)
+  
+  // Send initial connection message
+  reply.raw.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`)
+  
+  // Clean up on disconnect
+  request.raw.on('close', () => {
+    scanProgressListeners = scanProgressListeners.filter(l => l !== listener)
+  })
 })
 
 // Scan movies only
@@ -488,9 +543,11 @@ fastify.post('/api/scan/movies', async (request, reply) => {
   try {
     const moviesPath = process.env.MOVIES_PATH || '/movies'
     
+    setProgressCallback(emitScanProgress)
     fastify.log.info('Starting movies scan...')
     const result = await scanMovies(moviesPath, false)
     fastify.log.info('Movies scan completed')
+    emitScanProgress({ type: 'complete', category: 'movies' })
     
     return { 
       success: true,
@@ -509,9 +566,11 @@ fastify.post('/api/scan/tv', async (request, reply) => {
   try {
     const tvPath = process.env.TV_SHOWS_PATH || '/tv'
     
+    setProgressCallback(emitScanProgress)
     fastify.log.info('Starting TV shows scan...')
     const result = await scanTVShows(tvPath)
     fastify.log.info('TV shows scan completed')
+    emitScanProgress({ type: 'complete', category: 'tv' })
     
     return { 
       success: true,
@@ -530,9 +589,11 @@ fastify.post('/api/scan/books', async (request, reply) => {
   try {
     const booksPath = process.env.BOOKS_PATH || '/books'
     
+    setProgressCallback(emitScanProgress)
     fastify.log.info('Starting books scan...')
     const result = await scanBooks(booksPath)
     fastify.log.info('Books scan completed')
+    emitScanProgress({ type: 'complete', category: 'books' })
     
     return { 
       success: true,
@@ -567,14 +628,57 @@ fastify.post('/api/metadata/clear/tv', async (request, reply) => {
   try {
     fastify.log.info('Clearing TV shows metadata...')
     const db = getDatabase()
+    
+    // Clear episode metadata first
+    const episodesResult = await db.db.execute("UPDATE tv_episodes SET metadata_json = NULL")
+    const episodesCleared = episodesResult.rowsAffected || 0
+    fastify.log.info(`TV episodes metadata cleared: ${episodesCleared} items`)
+    
+    // Clear show metadata
     const result = await db.db.execute("UPDATE media_items SET metadata_json = NULL WHERE type = 'tv_show'")
     const cleared = result.rowsAffected || 0
     fastify.log.info(`TV shows metadata cleared: ${cleared} items`)
     
-    return { success: true, cleared }
+    return { success: true, cleared: cleared + episodesCleared }
   } catch (error) {
     fastify.log.error(error)
     return reply.status(500).send({ error: 'Failed to clear TV shows metadata' })
+  }
+})
+
+// Clear metadata for a specific TV show and its episodes
+fastify.post('/api/tv-shows/:showId/metadata/clear', async (request, reply) => {
+  try {
+    const { showId } = request.params as { showId: string }
+    fastify.log.info(`Clearing metadata for show ${showId}...`)
+    
+    const show = await getMediaItemByIdOrPath(showId)
+    if (!show) {
+      return reply.status(404).send({ error: 'Show not found' })
+    }
+    
+    const db = getDatabase()
+    
+    // Clear episode metadata first
+    const episodesResult = await db.db.execute({
+      sql: "UPDATE tv_episodes SET metadata_json = NULL WHERE show_id = ?",
+      args: [show.id!]
+    })
+    const episodesCleared = episodesResult.rowsAffected || 0
+    fastify.log.info(`Episodes metadata cleared: ${episodesCleared} items`)
+    
+    // Clear show metadata
+    const result = await db.db.execute({
+      sql: "UPDATE media_items SET metadata_json = NULL WHERE id = ?",
+      args: [show.id!]
+    })
+    const cleared = result.rowsAffected || 0
+    fastify.log.info(`Show metadata cleared`)
+    
+    return { success: true, cleared: cleared + episodesCleared }
+  } catch (error) {
+    fastify.log.error(error)
+    return reply.status(500).send({ error: 'Failed to clear show metadata' })
   }
 })
 
@@ -583,11 +687,18 @@ fastify.post('/api/metadata/clear/books', async (request, reply) => {
   try {
     fastify.log.info('Clearing books metadata...')
     const db = getDatabase()
-    const result = await db.db.execute("UPDATE media_items SET metadata_json = NULL WHERE type = 'book'")
-    const cleared = result.rowsAffected || 0
-    fastify.log.info(`Books metadata cleared: ${cleared} items`)
     
-    return { success: true, cleared }
+    // Clear episode metadata first
+    const episodesResult = await db.db.execute("UPDATE tv_episodes SET metadata_json = NULL")
+    const episodesCleared = episodesResult.rowsAffected || 0
+    fastify.log.info(`TV episodes metadata cleared: ${episodesCleared} items`)
+    
+    // Clear show metadata
+    const result = await db.db.execute("UPDATE media_items SET metadata_json = NULL WHERE type = 'tv_show'")
+    const cleared = result.rowsAffected || 0
+    fastify.log.info(`TV shows metadata cleared: ${cleared} items`)
+    
+    return { success: true, cleared: cleared + episodesCleared }
   } catch (error) {
     fastify.log.error(error)
     return reply.status(500).send({ error: 'Failed to clear books metadata' })

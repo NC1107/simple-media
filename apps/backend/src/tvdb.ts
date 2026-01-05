@@ -74,7 +74,8 @@ export async function testTVDBConnection(): Promise<{ success: boolean; message:
 }
 
 interface TVDBSeriesResult {
-  tvdb_id: string
+  id: string
+  tvdb_id?: string
   name: string
   overview: string
   first_air_time: string
@@ -90,7 +91,8 @@ interface TVDBSearchResponse {
 }
 
 interface TVDBSeriesDetails {
-  tvdb_id: string
+  id: string
+  tvdb_id?: string
   name: string
   overview: string
   first_air_time: string
@@ -102,7 +104,8 @@ interface TVDBSeriesDetails {
 }
 
 interface TVDBSeriesExtended {
-  tvdb_id: string
+  id: string
+  tvdb_id?: string
   name: string
   overview: string
   first_air_time: string
@@ -172,10 +175,11 @@ export async function searchTVShow(title: string, year?: string): Promise<TVShow
 
     // Take the first result and fetch extended details
     const show = data.data[0]
-    console.log(`Found: ${show.name} (${show.year}) - TVDB ID: ${show.tvdb_id}`)
+    const showId = show.tvdb_id || show.id
+    console.log(`Found: ${show.name} (${show.year}) - TVDB ID: ${showId}`)
 
     // Fetch extended series details
-    const detailsResponse = await rateLimitedFetch(`${TVDB_BASE_URL}/series/${show.tvdb_id}/extended`, {
+    const detailsResponse = await rateLimitedFetch(`${TVDB_BASE_URL}/series/${showId}/extended`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Accept': 'application/json'
@@ -186,7 +190,7 @@ export async function searchTVShow(title: string, year?: string): Promise<TVShow
       console.error(`Failed to fetch TV show details: ${detailsResponse.status}`)
       // Fall back to basic data
       return {
-        tvdb_id: show.tvdb_id,
+        tvdb_id: showId,
         title: show.name,
         overview: show.overview || '',
         first_air_year: show.year || show.first_air_time?.split('-')[0] || '',
@@ -202,10 +206,11 @@ export async function searchTVShow(title: string, year?: string): Promise<TVShow
 
     const details = await detailsResponse.json() as { data: TVDBSeriesExtended }
     const extended = details.data
+    const extendedId = extended.tvdb_id || extended.id
     console.log(`Fetched extended details for: ${extended.name}`)
 
     return {
-      tvdb_id: extended.tvdb_id,
+      tvdb_id: extendedId,
       title: extended.name,
       overview: extended.overview || '',
       first_air_year: extended.year || extended.first_air_time?.split('-')[0] || '',

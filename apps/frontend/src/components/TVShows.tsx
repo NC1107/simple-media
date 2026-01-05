@@ -1,19 +1,7 @@
 import { useState, useEffect } from 'react'
 import { API_BASE_URL } from '../config'
 import { showToast } from './Toast'
-
-// Helper function to resolve image URLs (local vs remote)
-function resolveImageUrl(imagePath: string | null, showPath: string): string | undefined {
-  if (!imagePath) return undefined
-  
-  // If it's already a full URL, return as-is
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath
-  }
-  
-  // It's a local path, construct API URL
-  return `${API_BASE_URL}/api/images/tv/${encodeURIComponent(showPath)}/${imagePath}`
-}
+import { resolveImageUrl } from '../utils/imageUrl'
 
 interface TVShow {
   id: string
@@ -41,6 +29,7 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [justScanned, setJustScanned] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchShows()
@@ -66,6 +55,42 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
 
   const handleScan = async () => {
     setScanning(true)
+    setJustScanned(new Set())
+    
+    // Connect to SSE endpoint for progress updates
+    const eventSource = new EventSource(`${API_BASE_URL}/api/scan/progress`)
+    
+    eventSource.onmessage = async (event) => {
+      const data = JSON.parse(event.data)
+      
+      if (data.type === 'scanned' && data.category === 'tv') {
+        // Refresh the shows list to get updated data
+        const response = await fetch(`${API_BASE_URL}/api/tv-shows`)
+        const showsData: TVShowsResponse = await response.json()
+        setShows(showsData.shows || [])
+        
+        // Find the show that was just scanned and mark it
+        const scannedShow = (showsData.shows || []).find(s => s.name === data.item || data.item.includes(s.name))
+        if (scannedShow) {
+          setJustScanned(prev => new Set([...prev, scannedShow.id]))
+          // Remove the indicator after 2 seconds
+          setTimeout(() => {
+            setJustScanned(prev => {
+              const next = new Set(prev)
+              next.delete(scannedShow.id)
+              return next
+            })
+          }, 2000)
+        }
+      } else if (data.type === 'complete') {
+        eventSource.close()
+      }
+    }
+    
+    eventSource.onerror = () => {
+      eventSource.close()
+    }
+    
     try {
       const response = await fetch(`${API_BASE_URL}/api/scan/tv`, {
         method: 'POST'
@@ -78,13 +103,14 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
       const result = await response.json()
       showToast(`TV Shows scan completed! Added: ${result.added}, Updated: ${result.updated}`, 'success')
       
-      // Refresh the shows list
+      // Final refresh
       await fetchShows()
     } catch (error) {
       console.error('TV Shows scan failed:', error)
       showToast('Failed to scan TV shows. Check console for details.', 'error')
     } finally {
       setScanning(false)
+      eventSource.close()
     }
   }
 
@@ -141,13 +167,17 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
             }
           }
           
+          const isJustScanned = justScanned.has(show.id)
+          
           return (
             <div
               key={show.id}
               onClick={() => onShowSelect(show.id)}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow p-4 cursor-pointer"
+              className={`bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all p-4 cursor-pointer ${
+                isJustScanned ? 'ring-4 ring-green-500 ring-opacity-50' : ''
+              }`}
             >
-              <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded mb-2 overflow-hidden flex items-center justify-center">
+              <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded mb-2 overflow-hidden flex items-center justify-center relative">
                 {posterUrl ? (
                   <img src={resolveImageUrl(posterUrl, show.path)} alt={show.name} className="w-full h-full object-cover" />
                 ) : (
