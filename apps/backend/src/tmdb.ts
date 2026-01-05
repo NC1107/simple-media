@@ -21,6 +21,26 @@ async function rateLimitedFetch(url: string) {
   return fetch(url)
 }
 
+export async function testTMDBConnection(): Promise<{ success: boolean; message: string }> {
+  if (!TMDB_API_KEY) {
+    return { success: false, message: 'TMDB API key not configured' }
+  }
+
+  try {
+    const response = await rateLimitedFetch(`${TMDB_BASE_URL}/configuration?api_key=${TMDB_API_KEY}`)
+    
+    if (response.ok) {
+      return { success: true, message: 'TMDB API connection successful' }
+    } else if (response.status === 401) {
+      return { success: false, message: 'Invalid API key' }
+    } else {
+      return { success: false, message: `TMDB API error: ${response.status}` }
+    }
+  } catch (error) {
+    return { success: false, message: `Connection failed: ${error}` }
+  }
+}
+
 interface TMDBMovieResult {
   id: number
   title: string
@@ -39,6 +59,30 @@ interface TMDBSearchResponse {
   total_results: number
 }
 
+interface Genre {
+  id: number
+  name: string
+}
+
+interface TMDBMovieDetails {
+  id: number
+  title: string
+  original_title: string
+  overview: string
+  release_date: string
+  poster_path: string | null
+  backdrop_path: string | null
+  vote_average: number
+  vote_count: number
+  genres: Genre[]
+  runtime: number | null
+  tagline: string
+  status: string
+  budget: number
+  revenue: number
+  original_language: string
+}
+
 export interface MovieMetadata {
   tmdb_id: number
   title: string
@@ -49,7 +93,11 @@ export interface MovieMetadata {
   backdrop_url: string | null
   rating: number
   vote_count: number
-  genres: number[]
+  genres: string[]
+  runtime: number | null
+  tagline: string
+  status: string
+  original_language: string
 }
 
 export async function searchMovie(title: string, year?: string): Promise<MovieMetadata | null> {
@@ -85,21 +133,35 @@ export async function searchMovie(title: string, year?: string): Promise<MovieMe
       return null
     }
 
-    // Take the first result (most relevant)
+    // Take the first result and fetch full details
     const movie = data.results[0]
     console.log(`Found: ${movie.title} (${movie.release_date?.split('-')[0]}) - TMDB ID: ${movie.id}`)
 
+    // Fetch detailed movie info
+    const detailsResponse = await rateLimitedFetch(`${TMDB_BASE_URL}/movie/${movie.id}?api_key=${TMDB_API_KEY}`)
+    if (!detailsResponse.ok) {
+      console.error(`Failed to fetch movie details: ${detailsResponse.status}`)
+      return null
+    }
+
+    const details = await detailsResponse.json() as TMDBMovieDetails
+    console.log(`Fetched full details for: ${details.title}`)
+
     return {
-      tmdb_id: movie.id,
-      title: movie.title,
-      original_title: movie.original_title,
-      overview: movie.overview,
-      release_year: movie.release_date?.split('-')[0] || '',
-      poster_url: movie.poster_path ? `${TMDB_IMAGE_BASE}/w500${movie.poster_path}` : null,
-      backdrop_url: movie.backdrop_path ? `${TMDB_IMAGE_BASE}/original${movie.backdrop_path}` : null,
-      rating: movie.vote_average,
-      vote_count: movie.vote_count,
-      genres: movie.genre_ids
+      tmdb_id: details.id,
+      title: details.title,
+      original_title: details.original_title,
+      overview: details.overview,
+      release_year: details.release_date?.split('-')[0] || '',
+      poster_url: details.poster_path ? `${TMDB_IMAGE_BASE}/w500${details.poster_path}` : null,
+      backdrop_url: details.backdrop_path ? `${TMDB_IMAGE_BASE}/original${details.backdrop_path}` : null,
+      rating: details.vote_average,
+      vote_count: details.vote_count,
+      genres: details.genres.map(g => g.name),
+      runtime: details.runtime,
+      tagline: details.tagline,
+      status: details.status,
+      original_language: details.original_language
     }
   } catch (error) {
     console.error('Error fetching movie metadata:', error)

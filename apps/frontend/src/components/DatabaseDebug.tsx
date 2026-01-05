@@ -113,7 +113,7 @@ export default function DatabaseDebug() {
             )}
             
             {!item.metadata_json && (
-              <div className="mt-2 text-xs text-yellow-500">⚠️ No metadata available</div>
+              <div className="mt-2 text-xs text-yellow-500">No metadata available</div>
             )}
           </div>
         ))}

@@ -301,64 +301,84 @@ export async function scanBooks(booksPath: string): Promise<ScanResult> {
       return result
     }
     
-    const entries = await fs.readdir(booksPath, { withFileTypes: true })
+    // Scan both audiobooks and ebooks subdirectories
+    const subdirs = ['audiobooks', 'ebooks']
     
-    for (const entry of entries) {
+    for (const subdir of subdirs) {
+      const subdirPath = path.join(booksPath, subdir)
+      
       try {
-        const bookPath = path.join(booksPath, entry.name)
-        let fileSize = 0
-        let title = entry.name
+        await fs.access(subdirPath)
+      } catch {
+        console.log(`${subdir} directory does not exist: ${subdirPath}`)
+        continue
+      }
+      
+      const mediaType = subdir === 'audiobooks' ? 'audiobook' : 'ebook'
+      console.log(`Scanning ${subdir}...`)
+      
+      // Scan authors
+      const authors = await fs.readdir(subdirPath, { withFileTypes: true })
+      
+      for (const authorDir of authors) {
+        if (!authorDir.isDirectory()) continue
         
-        if (entry.isDirectory()) {
-          // If it's a folder, count files inside
-          const files = await fs.readdir(bookPath, { withFileTypes: true })
+        const authorPath = path.join(subdirPath, authorDir.name)
+        const series = await fs.readdir(authorPath, { withFileTypes: true })
+        
+        for (const seriesDir of series) {
+          if (!seriesDir.isDirectory()) continue
+          
+          const seriesPath = path.join(authorPath, seriesDir.name)
+          const files = await fs.readdir(seriesPath, { withFileTypes: true })
+          
+          // Filter relevant files
           const bookFiles = files.filter(f => {
             const ext = path.extname(f.name).toLowerCase()
-            return ['.epub', '.pdf', '.mobi', '.azw3', '.cbz', '.cbr'].includes(ext)
+            if (mediaType === 'ebook') {
+              return ['.epub', '.pdf', '.mobi', '.azw3', '.cbz', '.cbr'].includes(ext)
+            } else {
+              return ['.mp3', '.m4a', '.m4b', '.flac', '.ogg'].includes(ext)
+            }
           })
           
+          if (bookFiles.length === 0) continue
+          
+          let fileSize = 0
           for (const bf of bookFiles) {
-            fileSize += await getFileSize(path.join(bookPath, bf.name))
+            fileSize += await getFileSize(path.join(seriesPath, bf.name))
           }
           
-          title = entry.name
-        } else {
-          // If it's a file, check if it's a book format
-          const ext = path.extname(entry.name).toLowerCase()
-          const bookExts = ['.epub', '.pdf', '.mobi', '.azw3', '.cbz', '.cbr']
+          // Store path as: {audiobooks|ebooks}/author/series
+          const relativePath = path.join(subdir, authorDir.name, seriesDir.name)
           
-          if (bookExts.includes(ext)) {
-            fileSize = await getFileSize(bookPath)
-            title = path.basename(entry.name, ext)
+          const existingBook = await getMediaItemByPath(relativePath)
+          
+          await insertMediaItem({
+            type: mediaType as 'audiobook' | 'ebook',
+            title: seriesDir.name,
+            path: relativePath,
+            file_size: fileSize,
+            last_scanned: now
+          })
+          
+          if (existingBook) {
+            result.updated++
           } else {
-            continue // Skip non-book files
+            result.added++
           }
+          
+          console.log(`  [${mediaType}] ${authorDir.name} - ${seriesDir.name}`)
         }
-        
-        const existingBook = await getMediaItemByPath(entry.name)
-        
-        await insertMediaItem({
-          type: 'book',
-          title,
-          path: entry.name,
-          file_size: fileSize,
-          last_scanned: now
-        })
-        
-        if (existingBook) {
-          result.updated++
-        } else {
-          result.added++
-        }
-      } catch (error) {
-        result.errors.push(`Error scanning book ${entry.name}: ${error}`)
       }
     }
+    
+    return result
   } catch (error) {
-    result.errors.push(`Error scanning books directory: ${error}`)
+    console.error('Error scanning books:', error)
+    result.errors.push(`Failed to scan books: ${error}`)
+    return result
   }
-  
-  return result
 }
 
 export async function scanAllMedia(

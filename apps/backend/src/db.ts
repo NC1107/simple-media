@@ -6,7 +6,7 @@ interface Database {
 
 export interface MediaItem {
   id?: number
-  type: 'tv_show' | 'movie' | 'book'
+  type: 'tv_show' | 'movie' | 'book' | 'audiobook' | 'ebook'
   title: string
   path: string
   file_size?: number
@@ -105,12 +105,27 @@ export function getDatabase(): Database {
 
 export async function insertMediaItem(item: MediaItem): Promise<number> {
   const database = getDatabase()
-  const result = await database.db.execute({
-    sql: `INSERT OR REPLACE INTO media_items (type, title, path, file_size, last_scanned, metadata_json)
-          VALUES (?, ?, ?, ?, ?, ?)`,
-    args: [item.type, item.title, item.path, item.file_size || null, item.last_scanned, item.metadata_json || null]
-  })
-  return result.lastInsertRowid as number
+  
+  // Check if item already exists by path
+  const existing = await getMediaItemByPath(item.path)
+  
+  if (existing) {
+    // Update existing item, preserving the ID
+    await database.db.execute({
+      sql: `UPDATE media_items SET type = ?, title = ?, file_size = ?, last_scanned = ?, metadata_json = ?
+            WHERE id = ?`,
+      args: [item.type, item.title, item.file_size || null, item.last_scanned, item.metadata_json || null, existing.id]
+    })
+    return existing.id as number
+  } else {
+    // Insert new item
+    const result = await database.db.execute({
+      sql: `INSERT INTO media_items (type, title, path, file_size, last_scanned, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [item.type, item.title, item.path, item.file_size || null, item.last_scanned, item.metadata_json || null]
+    })
+    return result.lastInsertRowid as number
+  }
 }
 
 export async function insertTVEpisode(episode: TVEpisode): Promise<void> {
@@ -138,6 +153,27 @@ export async function getMediaItemByPath(path: string): Promise<MediaItem | null
     args: [path]
   })
   return result.rows[0] as MediaItem || null
+}
+
+export async function getMediaItemById(id: number): Promise<MediaItem | null> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT * FROM media_items WHERE id = ?',
+    args: [id]
+  })
+  return result.rows[0] as MediaItem || null
+}
+
+export async function getMediaItemByIdOrPath(idOrPath: string): Promise<MediaItem | null> {
+  // Try as ID first (numeric)
+  const numericId = parseInt(idOrPath)
+  if (!isNaN(numericId)) {
+    const byId = await getMediaItemById(numericId)
+    if (byId) return byId
+  }
+  
+  // Fall back to path lookup for backwards compatibility
+  return await getMediaItemByPath(idOrPath)
 }
 
 export async function getTVEpisodesByShow(showId: number): Promise<TVEpisode[]> {

@@ -40,6 +40,11 @@ interface TVShowMetadata {
   first_air_year: string
   poster_url: string | null
   status: string
+  genres: string[]
+  runtime: number | null
+  network: string | null
+  original_language: string
+  num_seasons: number
 }
 
 interface Season {
@@ -156,8 +161,8 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
       const result = await response.json()
       setMetadata(result.metadata)
       
-      // Update show state with new metadata_json
-      setShow(prev => prev ? { ...prev, metadata_json: JSON.stringify(result.metadata) } : null)
+      // Re-fetch show details to get updated metadata from database
+      await fetchShowDetails()
       
       showToast(`Metadata fetched for ${result.metadata.title}`, 'success')
     } catch (error) {
@@ -313,6 +318,30 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
                   <dt className="font-medium text-gray-600 dark:text-gray-400">First Aired</dt>
                   <dd className="text-gray-900 dark:text-white">{metadata.first_air_year}</dd>
                 </div>
+                {metadata.network && (
+                  <div>
+                    <dt className="font-medium text-gray-600 dark:text-gray-400">Network</dt>
+                    <dd className="text-gray-900 dark:text-white">{metadata.network}</dd>
+                  </div>
+                )}
+                {metadata.runtime && (
+                  <div>
+                    <dt className="font-medium text-gray-600 dark:text-gray-400">Runtime</dt>
+                    <dd className="text-gray-900 dark:text-white">{metadata.runtime} min</dd>
+                  </div>
+                )}
+                {metadata.num_seasons > 0 && (
+                  <div>
+                    <dt className="font-medium text-gray-600 dark:text-gray-400">Seasons</dt>
+                    <dd className="text-gray-900 dark:text-white">{metadata.num_seasons}</dd>
+                  </div>
+                )}
+                {metadata.genres && metadata.genres.length > 0 && (
+                  <div>
+                    <dt className="font-medium text-gray-600 dark:text-gray-400">Genres</dt>
+                    <dd className="text-gray-900 dark:text-white">{metadata.genres.join(', ')}</dd>
+                  </div>
+                )}
                 <div>
                   <dt className="font-medium text-gray-600 dark:text-gray-400">TVDB ID</dt>
                   <dd className="text-gray-900 dark:text-white">{metadata.tvdb_id}</dd>

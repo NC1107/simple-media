@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom'
 import Dashboard from './components/Dashboard'
 import TVShows from './components/TVShows'
 import TVShowDetail from './components/TVShowDetail'
@@ -9,12 +10,29 @@ import BookDetail from './components/BookDetail'
 import Settings from './components/Settings'
 import { ToastContainer } from './components/Toast'
 
+// Wrapper components to use useParams
+function TVShowDetailWrapper() {
+  const { showId } = useParams<{ showId: string }>()
+  const navigate = useNavigate()
+  return <TVShowDetail showId={decodeURIComponent(showId || '')} onBack={() => navigate('/tv-shows')} />
+}
+
+function MovieDetailWrapper() {
+  const { movieId } = useParams<{ movieId: string }>()
+  const navigate = useNavigate()
+  return <MovieDetail movieId={decodeURIComponent(movieId || '')} onBack={() => navigate('/movies')} />
+}
+
+function BookDetailWrapper() {
+  const { bookId } = useParams<{ bookId: string }>()
+  const navigate = useNavigate()
+  return <BookDetail bookId={decodeURIComponent(bookId || '')} onBack={() => navigate('/books')} />
+}
+
 function App() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [currentView, setCurrentView] = useState('dashboard')
-  const [selectedShow, setSelectedShow] = useState<string | null>(null)
-  const [selectedMovie, setSelectedMovie] = useState<string | null>(null)
-  const [selectedBook, setSelectedBook] = useState<string | null>(null)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
@@ -29,27 +47,13 @@ function App() {
     }
   }, [darkMode])
 
-  const handleNavigation = (view: string) => {
-    setCurrentView(view)
-    setSelectedShow(null)
-    setSelectedMovie(null)
-    setSelectedBook(null)
+  const handleNavigation = (path: string) => {
+    navigate(path)
     setMenuOpen(false)
   }
 
-  const handleShowSelect = (showId: string) => {
-    setSelectedShow(showId)
-    setCurrentView('tv-show-detail')
-  }
-
-  const handleMovieSelect = (movieId: string) => {
-    setSelectedMovie(movieId)
-    setCurrentView('movie-detail')
-  }
-
-  const handleBookSelect = (bookId: string) => {
-    setSelectedBook(bookId)
-    setCurrentView('book-detail')
+  const isActive = (path: string) => {
+    return location.pathname === path || location.pathname.startsWith(path + '/')
   }
 
   return (
@@ -78,7 +82,7 @@ function App() {
           {menuOpen && (
             <div 
               className="mb-6 flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => handleNavigation('dashboard')}
+              onClick={() => handleNavigation('/')}
             >
               <img
                 src="/logo.jpg"
@@ -93,7 +97,7 @@ function App() {
           {!menuOpen && (
             <div 
               className="mb-6 flex justify-center cursor-pointer hover:opacity-80 transition-opacity"
-              onClick={() => handleNavigation('dashboard')}
+              onClick={() => handleNavigation('/')}
             >
               <img
                 src="/logo.jpg"
@@ -106,8 +110,12 @@ function App() {
           {/* Menu Items */}
           <nav className="space-y-1">
             <button
-              onClick={() => handleNavigation('books')}
-              className={`w-full flex items-center px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${!menuOpen ? 'justify-center' : ''}`}
+              onClick={() => handleNavigation('/books')}
+              className={`w-full flex items-center px-3 py-2.5 text-sm rounded-lg transition-colors ${
+                isActive('/books')
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              } ${!menuOpen ? 'justify-center' : ''}`}
               title="Books"
             >
               <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -117,8 +125,12 @@ function App() {
             </button>
             
             <button
-              onClick={() => handleNavigation('tv-shows')}
-              className={`w-full flex items-center px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${!menuOpen ? 'justify-center' : ''}`}
+              onClick={() => handleNavigation('/tv-shows')}
+              className={`w-full flex items-center px-3 py-2.5 text-sm rounded-lg transition-colors ${
+                isActive('/tv-shows')
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              } ${!menuOpen ? 'justify-center' : ''}`}
               title="TV Shows"
             >
               <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -128,8 +140,12 @@ function App() {
             </button>
             
             <button
-              onClick={() => handleNavigation('movies')}
-              className={`w-full flex items-center px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${!menuOpen ? 'justify-center' : ''}`}
+              onClick={() => handleNavigation('/movies')}
+              className={`w-full flex items-center px-3 py-2.5 text-sm rounded-lg transition-colors ${
+                isActive('/movies')
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              } ${!menuOpen ? 'justify-center' : ''}`}
               title="Movies"
             >
               <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -139,8 +155,12 @@ function App() {
             </button>
             
             <button
-              onClick={() => handleNavigation('settings')}
-              className={`w-full flex items-center px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${!menuOpen ? 'justify-center' : ''}`}
+              onClick={() => handleNavigation('/settings')}
+              className={`w-full flex items-center px-3 py-2.5 text-sm rounded-lg transition-colors ${
+                isActive('/settings')
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              } ${!menuOpen ? 'justify-center' : ''}`}
               title="Settings"
             >
               <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -177,27 +197,16 @@ function App() {
       <div
         className={`flex-1 transition-all duration-300 ease-in-out ${menuOpen ? 'ml-64' : 'ml-16'}`}
       >
-        {currentView === 'dashboard' && <Dashboard />}
-        
-        {currentView === 'tv-shows' && <TVShows onShowSelect={handleShowSelect} />}
-        
-        {currentView === 'tv-show-detail' && selectedShow && (
-          <TVShowDetail showId={selectedShow} onBack={() => setCurrentView('tv-shows')} />
-        )}
-        
-        {currentView === 'movies' && <Movies onMovieSelect={handleMovieSelect} />}
-        
-        {currentView === 'movie-detail' && selectedMovie && (
-          <MovieDetail movieId={selectedMovie} onBack={() => setCurrentView('movies')} />
-        )}
-        
-        {currentView === 'books' && <Books onBookSelect={handleBookSelect} />}
-        
-        {currentView === 'book-detail' && selectedBook && (
-          <BookDetail bookId={selectedBook} onBack={() => setCurrentView('books')} />
-        )}
-        
-        {currentView === 'settings' && <Settings />}
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/tv-shows" element={<TVShows onShowSelect={(id) => navigate(`/tv-shows/${encodeURIComponent(id)}`)} />} />
+          <Route path="/tv-shows/:showId" element={<TVShowDetailWrapper />} />
+          <Route path="/movies" element={<Movies onMovieSelect={(id) => navigate(`/movies/${encodeURIComponent(id)}`)} />} />
+          <Route path="/movies/:movieId" element={<MovieDetailWrapper />} />
+          <Route path="/books" element={<Books onBookSelect={(id) => navigate(`/books/${encodeURIComponent(id)}`)} />} />
+          <Route path="/books/:bookId" element={<BookDetailWrapper />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
       </div>
       
       <ToastContainer />

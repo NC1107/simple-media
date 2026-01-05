@@ -21,6 +21,11 @@ interface MovieMetadata {
   backdrop_url: string | null
   rating: number
   vote_count: number
+  genres: string[]
+  runtime: number | null
+  tagline: string
+  status: string
+  original_language: string
 }
 
 export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
@@ -152,6 +157,22 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
                   <span className="text-gray-500 dark:text-gray-400">Votes:</span>
                   <span className="ml-2 text-gray-900 dark:text-white">{metadata.vote_count.toLocaleString()}</span>
                 </div>
+                {metadata.runtime && (
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Runtime:</span>
+                    <span className="ml-2 text-gray-900 dark:text-white">{metadata.runtime} min</span>
+                  </div>
+                )}
+                {metadata.genres && metadata.genres.length > 0 && (
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Genres:</span>
+                    <span className="ml-2 text-gray-900 dark:text-white">{metadata.genres.join(', ')}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Status:</span>
+                  <span className="ml-2 text-gray-900 dark:text-white">{metadata.status}</span>
+                </div>
               </div>
             ) : (
               <div>
@@ -178,8 +199,14 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
           </h1>
           
           {metadata?.release_year && (
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-6">
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-2">
               {metadata.release_year}
+            </p>
+          )}
+          
+          {metadata?.tagline && (
+            <p className="text-sm italic text-gray-500 dark:text-gray-400 mb-6">
+              "{metadata.tagline}"
             </p>
           )}
           

@@ -60,6 +60,19 @@ async function getAuthToken(): Promise<string | null> {
   }
 }
 
+export async function testTVDBConnection(): Promise<{ success: boolean; message: string }> {
+  try {
+    const token = await getAuthToken()
+    if (token) {
+      return { success: true, message: 'TVDB API connection successful' }
+    } else {
+      return { success: false, message: 'Failed to authenticate with TVDB' }
+    }
+  } catch (error) {
+    return { success: false, message: `Connection failed: ${error}` }
+  }
+}
+
 interface TVDBSeriesResult {
   tvdb_id: string
   name: string
@@ -88,6 +101,24 @@ interface TVDBSeriesDetails {
   }
 }
 
+interface TVDBSeriesExtended {
+  tvdb_id: string
+  name: string
+  overview: string
+  first_air_time: string
+  image: string | null
+  year: string
+  status: {
+    name: string
+  }
+  genres: Array<{ name: string }>
+  averageRuntime: number | null
+  originalNetwork: { name: string } | null
+  latestNetwork: { name: string } | null
+  originalLanguage: string
+  seasons: any[] | null
+}
+
 export interface TVShowMetadata {
   tvdb_id: string
   title: string
@@ -95,6 +126,11 @@ export interface TVShowMetadata {
   first_air_year: string
   poster_url: string | null
   status: string
+  genres: string[]
+  runtime: number | null
+  network: string | null
+  original_language: string
+  num_seasons: number
 }
 
 export async function searchTVShow(title: string, year?: string): Promise<TVShowMetadata | null> {
@@ -134,17 +170,52 @@ export async function searchTVShow(title: string, year?: string): Promise<TVShow
       return null
     }
 
-    // Take the first result (most relevant)
+    // Take the first result and fetch extended details
     const show = data.data[0]
     console.log(`Found: ${show.name} (${show.year}) - TVDB ID: ${show.tvdb_id}`)
 
+    // Fetch extended series details
+    const detailsResponse = await rateLimitedFetch(`${TVDB_BASE_URL}/series/${show.tvdb_id}/extended`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    })
+
+    if (!detailsResponse.ok) {
+      console.error(`Failed to fetch TV show details: ${detailsResponse.status}`)
+      // Fall back to basic data
+      return {
+        tvdb_id: show.tvdb_id,
+        title: show.name,
+        overview: show.overview || '',
+        first_air_year: show.year || show.first_air_time?.split('-')[0] || '',
+        poster_url: show.image_url || null,
+        status: show.status || 'Unknown',
+        genres: [],
+        runtime: null,
+        network: null,
+        original_language: show.primary_language || '',
+        num_seasons: 0
+      }
+    }
+
+    const details = await detailsResponse.json() as { data: TVDBSeriesExtended }
+    const extended = details.data
+    console.log(`Fetched extended details for: ${extended.name}`)
+
     return {
-      tvdb_id: show.tvdb_id,
-      title: show.name,
-      overview: show.overview || '',
-      first_air_year: show.year || show.first_air_time?.split('-')[0] || '',
-      poster_url: show.image_url || null,
-      status: show.status || 'Unknown'
+      tvdb_id: extended.tvdb_id,
+      title: extended.name,
+      overview: extended.overview || '',
+      first_air_year: extended.year || extended.first_air_time?.split('-')[0] || '',
+      poster_url: extended.image || show.image_url || null,
+      status: extended.status?.name || 'Unknown',
+      genres: extended.genres?.map(g => g.name) || [],
+      runtime: extended.averageRuntime,
+      network: extended.latestNetwork?.name || extended.originalNetwork?.name || null,
+      original_language: extended.originalLanguage || '',
+      num_seasons: extended.seasons?.length || 0
     }
   } catch (error) {
     console.error('TVDB search error:', error)

@@ -2,7 +2,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import path from 'path'
 import fs from 'fs/promises'
-import { initDatabase, getMediaItemsByType, getMediaItemByPath, getTVEpisodesBySeason, getMediaStats, getAllSettings, setSetting, getSetting, getDatabase, cleanupInvalidSettings } from './db.js'
+import { initDatabase, getMediaItemsByType, getMediaItemByPath, getMediaItemByIdOrPath, getTVEpisodesBySeason, getMediaStats, getAllSettings, setSetting, getSetting, getDatabase, cleanupInvalidSettings } from './db.js'
 import { scanAllMedia, scanMovies, scanTVShows, scanBooks } from './scanner.js'
 import { searchMovie, parseMovieTitle } from './tmdb.js'
 
@@ -71,7 +71,7 @@ fastify.get('/api/tv-shows', async (request, reply) => {
     
     return { 
       shows: shows.map(show => ({
-        id: show.path,
+        id: show.id!.toString(),
         name: show.title,
         path: show.path,
         metadata_json: show.metadata_json
@@ -89,8 +89,8 @@ fastify.get('/api/tv-shows/:showId/seasons', async (request, reply) => {
   try {
     const { showId } = request.params as { showId: string }
     
-    // Get the show from database
-    const show = await getMediaItemByPath(showId)
+    // Get the show from database by ID or path
+    const show = await getMediaItemByIdOrPath(showId)
     if (!show) {
       return { seasons: [], message: 'TV show not found' }
     }
@@ -131,7 +131,7 @@ fastify.get('/api/tv-shows/:showId/seasons/:seasonId/episodes', async (request, 
     const seasonNumber = seasonMatch ? parseInt(seasonMatch[1]) : 0
     
     // Get the show from database
-    const show = await getMediaItemByPath(showId)
+    const show = await getMediaItemByIdOrPath(showId)
     if (!show) {
       return { episodes: [], message: 'TV show not found' }
     }
@@ -163,7 +163,7 @@ fastify.get('/api/movies', async (request, reply) => {
     
     return { 
       movies: movies.map(movie => ({
-        id: movie.path,
+        id: movie.id!.toString(),
         name: movie.title,
         path: movie.path,
         fileSize: movie.file_size,
@@ -184,7 +184,7 @@ fastify.get('/api/books', async (request, reply) => {
     
     return { 
       books: books.map(book => ({
-        id: book.path,
+        id: book.id!.toString(),
         name: book.title,
         path: book.path,
         fileSize: book.file_size
@@ -240,6 +240,27 @@ fastify.post('/api/settings', async (request, reply) => {
   }
 })
 
+// Test TMDB/TVDB API connections
+fastify.get('/api/test-api-connections', async (request, reply) => {
+  try {
+    const { testTMDBConnection } = await import('./tmdb.js')
+    const { testTVDBConnection } = await import('./tvdb.js')
+    
+    const [tmdbResult, tvdbResult] = await Promise.all([
+      testTMDBConnection(),
+      testTVDBConnection()
+    ])
+    
+    return {
+      tmdb: tmdbResult,
+      tvdb: tvdbResult
+    }
+  } catch (error) {
+    fastify.log.error(error, 'Failed to test API connections')
+    return reply.status(500).send({ error: 'Failed to test connections' })
+  }
+})
+
 // Fetch metadata for a single movie
 fastify.post('/api/movies/:movieId/metadata', async (request, reply) => {
   try {
@@ -247,7 +268,7 @@ fastify.post('/api/movies/:movieId/metadata', async (request, reply) => {
     
     fastify.log.info(`Fetching metadata for movie: ${movieId}`)
     
-    const movie = await getMediaItemByPath(movieId)
+    const movie = await getMediaItemByIdOrPath(movieId)
     if (!movie) {
       fastify.log.warn(`Movie not found: ${movieId}`)
       return reply.status(404).send({ error: 'Movie not found' })
@@ -287,7 +308,7 @@ fastify.post('/api/tv-shows/:showId/metadata', async (request, reply) => {
     
     fastify.log.info(`Fetching metadata for TV show: ${showId}`)
     
-    const show = await getMediaItemByPath(showId)
+    const show = await getMediaItemByIdOrPath(showId)
     if (!show) {
       fastify.log.warn(`TV show not found: ${showId}`)
       return reply.status(404).send({ error: 'TV show not found' })
@@ -339,7 +360,7 @@ fastify.post('/api/tv-shows/:showId/seasons/:seasonId/episodes/:episodeNumber/me
     fastify.log.info(`Fetching episode metadata for ${showId} S${seasonId}E${episodeNumber}`)
     
     // Get the show to retrieve its TVDB ID
-    const show = await getMediaItemByPath(showId)
+    const show = await getMediaItemByIdOrPath(showId)
     if (!show || !show.metadata_json) {
       fastify.log.warn(`Show not found or missing metadata: ${showId}`)
       return reply.status(404).send({ error: 'Show metadata not found. Please fetch show metadata first.' })

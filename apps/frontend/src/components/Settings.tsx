@@ -24,6 +24,10 @@ function Settings() {
   const [clearingTV, setClearingTV] = useState(false)
   const [clearingBooks, setClearingBooks] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState<{ type: string; isOpen: boolean }>({ type: '', isOpen: false })
+  const [testingTMDB, setTestingTMDB] = useState(false)
+  const [testingTVDB, setTestingTVDB] = useState(false)
+  const [tmdbResult, setTmdbResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [tvdbResult, setTvdbResult] = useState<{ success: boolean; message: string } | null>(null)
 
   useEffect(() => {
     fetchSettings()
@@ -152,6 +156,58 @@ function Settings() {
     }
   }
 
+  const handleTestTMDB = async () => {
+    setTestingTMDB(true)
+    setTmdbResult(null)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/test-api-connections`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to test TMDB connection')
+      }
+
+      const results = await response.json()
+      setTmdbResult(results.tmdb)
+      
+      if (results.tmdb.success) {
+        showToast('TMDB connection successful', 'success')
+      } else {
+        showToast('TMDB connection failed', 'error')
+      }
+    } catch (error) {
+      console.error('Failed to test TMDB connection:', error)
+      showToast('Failed to test TMDB connection', 'error')
+    } finally {
+      setTestingTMDB(false)
+    }
+  }
+
+  const handleTestTVDB = async () => {
+    setTestingTVDB(true)
+    setTvdbResult(null)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/test-api-connections`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to test TVDB connection')
+      }
+
+      const results = await response.json()
+      setTvdbResult(results.tvdb)
+      
+      if (results.tvdb.success) {
+        showToast('TVDB connection successful', 'success')
+      } else {
+        showToast('TVDB connection failed', 'error')
+      }
+    } catch (error) {
+      console.error('Failed to test TVDB connection:', error)
+      showToast('Failed to test TVDB connection', 'error')
+    } finally {
+      setTestingTVDB(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-8">
@@ -198,16 +254,50 @@ function Settings() {
             </div>
 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setConfirmDialog({ type: 'movie', isOpen: true })}
-                disabled={clearingMovies}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {clearingMovies ? 'Clearing...' : 'Clear Movie Metadata'}
-              </button>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                Remove all metadata for movies. The movie files will remain in your library.
-              </p>
+              <div className="mb-4">
+                <button
+                  onClick={handleTestTMDB}
+                  disabled={testingTMDB}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {testingTMDB ? 'Testing...' : 'Test TMDB Connection'}
+                </button>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Test your TMDB API connection for movie metadata.
+                </p>
+                {tmdbResult && (
+                  <div className={`p-3 rounded-lg mt-3 ${tmdbResult.success ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-800 dark:text-gray-200">Status</span>
+                      {tmdbResult.success ? (
+                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </div>
+                    <p className={`text-sm mt-1 ${tmdbResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                      {tmdbResult.message}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setConfirmDialog({ type: 'movie', isOpen: true })}
+                  disabled={clearingMovies}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {clearingMovies ? 'Clearing...' : 'Clear Movie Metadata'}
+                </button>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Remove all metadata for movies. The movie files will remain in your library.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -270,16 +360,50 @@ function Settings() {
             </div>
 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setConfirmDialog({ type: 'TV show', isOpen: true })}
-                disabled={clearingTV}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {clearingTV ? 'Clearing...' : 'Clear TV Show Metadata'}
-              </button>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                Remove all metadata for TV shows. The show files will remain in your library.
-              </p>
+              <div className="mb-4">
+                <button
+                  onClick={handleTestTVDB}
+                  disabled={testingTVDB}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {testingTVDB ? 'Testing...' : 'Test TVDB Connection'}
+                </button>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Test your TVDB API connection for TV show metadata.
+                </p>
+                {tvdbResult && (
+                  <div className={`p-3 rounded-lg mt-3 ${tvdbResult.success ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-800 dark:text-gray-200">Status</span>
+                      {tvdbResult.success ? (
+                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </div>
+                    <p className={`text-sm mt-1 ${tvdbResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                      {tvdbResult.message}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setConfirmDialog({ type: 'TV show', isOpen: true })}
+                  disabled={clearingTV}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {clearingTV ? 'Clearing...' : 'Clear TV Show Metadata'}
+                </button>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Remove all metadata for TV shows. The show files will remain in your library.
+                </p>
+              </div>
             </div>
           </div>
         </div>
