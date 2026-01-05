@@ -18,7 +18,11 @@
         "strict": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
-        "noFallthroughCasesInSwitch": true
+        "noFallthroughCasesInSwitch": true,
+        "baseUrl": ".",
+        "paths": {
+            "@simple-media/types": ["../../packages/types/src/index.ts"]
+        }
     },
     "include": [
         "src"

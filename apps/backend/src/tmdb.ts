@@ -1,4 +1,8 @@
 import fetch from 'node-fetch'
+import type { MovieMetadata, ApiConnectionTestResult } from '@simple-media/types'
+
+// Re-export for use by other modules
+export type { MovieMetadata }
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3'
@@ -21,7 +25,7 @@ async function rateLimitedFetch(url: string) {
   return fetch(url)
 }
 
-export async function testTMDBConnection(): Promise<{ success: boolean; message: string }> {
+export async function testTMDBConnection(): Promise<ApiConnectionTestResult> {
   if (!TMDB_API_KEY) {
     return { success: false, message: 'TMDB API key not configured' }
   }
@@ -80,23 +84,6 @@ interface TMDBMovieDetails {
   status: string
   budget: number
   revenue: number
-  original_language: string
-}
-
-export interface MovieMetadata {
-  tmdb_id: number
-  title: string
-  original_title: string
-  overview: string
-  release_year: string
-  poster_url: string | null
-  backdrop_url: string | null
-  rating: number
-  vote_count: number
-  genres: string[]
-  runtime: number | null
-  tagline: string
-  status: string
   original_language: string
 }
 

@@ -1,29 +1,11 @@
 import { createClient } from '@libsql/client'
+import type { MediaItem, TVEpisode, MediaStats } from '@simple-media/types'
+
+// Re-export types for use by other modules
+export type { MediaItem, TVEpisode }
 
 interface Database {
   db: any
-}
-
-export interface MediaItem {
-  id?: number
-  type: 'tv_show' | 'movie' | 'audiobook' | 'ebook'
-  title: string
-  path: string
-  file_size?: number
-  last_scanned: number
-  metadata_json?: string
-}
-
-export interface TVEpisode {
-  id?: number
-  show_id: number
-  season_number: number
-  episode_number: number
-  title: string
-  file_path: string
-  file_size: number
-  last_scanned: number
-  metadata_json?: string
 }
 
 let db: Database | null = null

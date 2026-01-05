@@ -1,4 +1,8 @@
 import fetch from 'node-fetch'
+import type { TVShowMetadata, EpisodeMetadata, ApiConnectionTestResult } from '@simple-media/types'
+
+// Re-export for use by other modules
+export type { TVShowMetadata, EpisodeMetadata }
 
 const TVDB_API_KEY = process.env.TVDB_API_KEY
 const TVDB_BASE_URL = 'https://api4.thetvdb.com/v4'
@@ -60,7 +64,7 @@ async function getAuthToken(): Promise<string | null> {
   }
 }
 
-export async function testTVDBConnection(): Promise<{ success: boolean; message: string }> {
+export async function testTVDBConnection(): Promise<ApiConnectionTestResult> {
   try {
     const token = await getAuthToken()
     if (token) {
@@ -120,20 +124,6 @@ interface TVDBSeriesExtended {
   latestNetwork: { name: string } | null
   originalLanguage: string
   seasons: any[] | null
-}
-
-export interface TVShowMetadata {
-  tvdb_id: string
-  title: string
-  overview: string
-  first_air_year: string
-  poster_url: string | null
-  status: string
-  genres: string[]
-  runtime: number | null
-  network: string | null
-  original_language: string
-  num_seasons: number
 }
 
 export async function searchTVShow(title: string, year?: string): Promise<TVShowMetadata | null> {
@@ -243,16 +233,6 @@ export function parseTVShowTitle(filename: string): { title: string; year?: stri
   }
   
   return { title: filename.trim() }
-}
-
-export interface EpisodeMetadata {
-  tvdb_id: string
-  name: string
-  overview: string
-  aired: string
-  still_url: string | null
-  season_number: number
-  episode_number: number
 }
 
 export async function getEpisodeMetadata(seriesId: string, seasonNumber: number, episodeNumber: number): Promise<EpisodeMetadata | null> {

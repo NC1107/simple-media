@@ -1,113 +1,35 @@
-// Shared API response types
-export interface ApiListResponse<T> {
-  total: number
-  message?: string
-  [key: string]: T[] | number | string | undefined
-}
+// Re-export shared types from the types package
+export type {
+  // Metadata types
+  MovieMetadata,
+  TVShowMetadata,
+  EpisodeMetadata,
 
-// Movie types
-export interface Movie {
-  id: string
-  name: string
-  path: string
-  fileSize?: number
-  metadata?: MovieMetadata | null
-}
+  // API Response types
+  MovieResponse,
+  TVShowResponse,
+  SeasonResponse,
+  EpisodeResponse,
+  BookResponse,
+  MoviesListResponse,
+  TVShowsListResponse,
+  SeasonsListResponse,
+  EpisodesListResponse,
+  BooksListResponse,
+  ScanResponse,
+  MediaStats,
+  ApiConnectionTestResult,
+  ApiConnectionsResponse,
+} from '@simple-media/types'
 
-export interface MovieMetadata {
-  tmdb_id: number
-  title: string
-  overview: string
-  release_year: string
-  poster_url: string | null
-  backdrop_url: string | null
-  rating: number
-  vote_count: number
-  genres: string[]
-  runtime: number | null
-  tagline: string
-  status: string
-  original_language: string
-}
-
-// TV Show types
-export interface TVShow {
-  id: string
-  name: string
-  path: string
-  metadata_json?: string
-}
-
-export interface TVShowMetadata {
-  tvdb_id: string
-  title: string
-  overview: string
-  first_air_year: string
-  poster_url: string | null
-  status: string
-  genres: string[]
-  runtime: number | null
-  network: string | null
-  original_language: string
-  num_seasons: number
-}
-
-export interface Season {
-  id: string
-  name: string
-  seasonNumber: number
-  path: string
-}
-
-export interface Episode {
-  id: string
-  name: string
-  episodeNumber: number
-  path: string
-  fileSize?: number
-  metadata_json?: string
-}
-
-export interface EpisodeMetadata {
-  tvdb_id: string
-  name: string
-  overview: string
-  aired: string
-  still_url: string | null
-  season_number: number
-  episode_number: number
-}
-
-// Book types
-export interface Book {
-  id: string
-  name: string
-  path: string
-  fileSize?: number
-}
-
-// API Response types
-export interface MoviesResponse {
-  movies: Movie[]
-  total: number
-  message?: string
-}
-
-export interface TVShowsResponse {
-  shows: TVShow[]
-  total: number
-  message?: string
-}
-
-export interface BooksResponse {
-  books: Book[]
-  total: number
-  message?: string
-}
-
-export interface ScanResult {
-  success: boolean
-  added: number
-  updated: number
-  errors?: number
-}
+// Aliases for backwards compatibility with existing component code
+// These match what the API actually returns
+export type Movie = import('@simple-media/types').MovieResponse
+export type TVShow = import('@simple-media/types').TVShowResponse
+export type Season = import('@simple-media/types').SeasonResponse
+export type Episode = import('@simple-media/types').EpisodeResponse
+export type Book = import('@simple-media/types').BookResponse
+export type MoviesResponse = import('@simple-media/types').MoviesListResponse
+export type TVShowsResponse = import('@simple-media/types').TVShowsListResponse
+export type BooksResponse = import('@simple-media/types').BooksListResponse
+export type ScanResult = import('@simple-media/types').ScanResponse
