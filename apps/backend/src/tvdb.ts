@@ -114,6 +114,7 @@ interface TVDBSeriesExtended {
   overview: string
   first_air_time: string
   image: string | null
+  backdrop: string | null
   year: string
   status: {
     name: string
@@ -124,6 +125,7 @@ interface TVDBSeriesExtended {
   latestNetwork: { name: string } | null
   originalLanguage: string
   seasons: any[] | null
+  score: number | null
 }
 
 export async function searchTVShow(title: string, year?: string): Promise<TVShowMetadata | null> {

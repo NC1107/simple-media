@@ -312,7 +312,7 @@ export async function scanMovies(moviesPath: string, skipMetadata = false): Prom
   return result
 }
 
-export async function scanBooks(booksPath: string): Promise<ScanResult> {
+export async function scanBooks(booksPath: string, mediaType?: 'audiobook' | 'ebook'): Promise<ScanResult> {
   const result: ScanResult = { added: 0, updated: 0, errors: [] }
   const now = Date.now()
   
@@ -470,7 +470,7 @@ export async function scanBooks(booksPath: string): Promise<ScanResult> {
             path: relativePath,
             file_size: fileSize,
             last_scanned: now,
-            metadata_json: metadataJson || null
+            metadata_json: metadataJson || undefined
           })
           
           if (existingBook) {
