@@ -13,13 +13,12 @@ A lightweight media management system for organizing TV shows, movies, and books
 ![Movie Details Screenshot](docs/movie-details.png)
 
 ### TV Show Details
+
 ![TV Show Details Screenshot](docs/tv-shows.png)
 
 ### Episode Details
 
 ![Episode Details Screenshot](docs/episode-details.png)
-
-
 
 ## Overview
 
@@ -66,9 +65,16 @@ a different type of media.
 Currently this is basically a glorified media scanner with metadata fetching and a frontend to view the media. my goal is
 to be able to write this data to the files media files and cleanup the library structure after scanning and fetching metadata.
 
-## Current Goal TLDR
+## Next Steps
 
-- determine tech stack, setup docker container pipeline, get webpage on localhost.
+The immediate focus is making this actually useful beyond just displaying things nicely. Right now I'm thinking:
+
+- Write metadata to NFO files so it persists and works with Kodi/Jellyfin/Plex
+- Add a global search bar that works across all media types with basic filtering
+- Show library statistics on the dashboard (total items, disk usage, recently added stuff)
+- Track watch/read progress so you know what you've actually watched or read
+
+After that, probably add more settings people expect, in-app metadata editing, maybe automatic file organization and renaming.
 
 ## Notes
 
