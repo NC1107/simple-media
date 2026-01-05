@@ -62,12 +62,7 @@ a different type of media.
 
 ## Current Goal
 
-Currently this is basically a glorified media scanner with metadata fetching and a frontend to view the media. my goal is
-to be able to write this data to the files media files and cleanup the library structure after scanning and fetching metadata.
-
-## Next Steps
-
-The immediate focus is making this actually useful beyond just displaying things nicely. Right now I'm thinking:
+Currently this is basically a glorified media scanner with metadata fetching and a frontend to view the media. My immediate focus is making this actually useful beyond just displaying things nicely. Right now I'm thinking:
 
 - Write metadata to NFO files so it persists and works with Kodi/Jellyfin/Plex
 - Add a global search bar that works across all media types with basic filtering
@@ -76,15 +71,9 @@ The immediate focus is making this actually useful beyond just displaying things
 
 After that, probably add more settings people expect, in-app metadata editing, maybe automatic file organization and renaming.
 
-## Notes
-
-- I want this to be light, I'm not going to plan for hosting 500million users and have the most segmented backend
-- I want it to be modular, the first media I want to work on will be books. This will come after step 1
-
 ## Tech stack
 
 ### Frontend
-
 - React + Typescript + Vite
 - Tailwind CSS
 
