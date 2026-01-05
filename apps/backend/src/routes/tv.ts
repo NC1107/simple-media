@@ -9,12 +9,30 @@ export async function tvRoutes(fastify: FastifyInstance) {
       const shows = await getMediaItemsByType('tv_show')
 
       return {
-        shows: shows.map(show => ({
-          id: show.id!.toString(),
-          name: show.title,
-          path: show.path,
-          metadata_json: show.metadata_json
-        })),
+        shows: shows.map(show => {
+          const metadata = show.metadata_json ? JSON.parse(show.metadata_json) : null
+          return {
+            id: show.id!.toString(),
+            name: show.title,
+            path: show.path,
+            posterUrl: metadata?.poster_url || null,
+            metadata: metadata ? {
+              tvdb_id: metadata.tvdb_id,
+              title: metadata.title,
+              overview: metadata.overview,
+              first_air_year: metadata.first_air_year,
+              poster_url: metadata.poster_url,
+              backdrop_url: metadata.backdrop_url,
+              status: metadata.status,
+              genres: metadata.genres || [],
+              runtime: metadata.runtime,
+              network: metadata.network,
+              original_language: metadata.original_language,
+              num_seasons: metadata.num_seasons,
+              rating: metadata.rating
+            } : null
+          }
+        }),
         total: shows.length
       }
     } catch (error) {
@@ -73,14 +91,28 @@ export async function tvRoutes(fastify: FastifyInstance) {
       const episodes = await getTVEpisodesBySeason(show.id!, seasonNumber)
 
       return {
-        episodes: episodes.map(ep => ({
-          id: ep.file_path,
-          name: ep.title,
-          episodeNumber: ep.episode_number,
-          path: ep.file_path,
-          fileSize: ep.file_size,
-          metadata_json: ep.metadata_json
-        })),
+        episodes: episodes.map(ep => {
+          const metadata = ep.metadata_json ? JSON.parse(ep.metadata_json) : null
+          return {
+            id: ep.file_path,
+            name: ep.title,
+            episodeNumber: ep.episode_number,
+            seasonNumber: ep.season_number,
+            path: ep.file_path,
+            fileSize: ep.file_size,
+            stillUrl: metadata?.still_url || null,
+            metadata: metadata ? {
+              tvdb_id: metadata.tvdb_id,
+              name: metadata.name,
+              overview: metadata.overview,
+              aired: metadata.aired,
+              still_url: metadata.still_url,
+              season_number: metadata.season_number,
+              episode_number: metadata.episode_number,
+              runtime: metadata.runtime
+            } : null
+          }
+        }),
         total: episodes.length
       }
     } catch (error) {

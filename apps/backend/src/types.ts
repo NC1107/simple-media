@@ -34,41 +34,62 @@ export interface MovieMetadata {
   tmdb_id: number
   title: string
   original_title: string
-  overview: string
-  release_year: string
+  overview: string | null
+  release_year: string | null
   poster_url: string | null
   backdrop_url: string | null
-  rating: number
-  vote_count: number
+  rating: number | null
+  vote_count: number | null
   genres: string[]
   runtime: number | null
-  tagline: string
-  status: string
-  original_language: string
+  tagline: string | null
+  status: string | null
+  original_language: string | null
 }
 
 export interface TVShowMetadata {
   tvdb_id: string
   title: string
-  overview: string
-  first_air_year: string
+  overview: string | null
+  first_air_year: string | null
   poster_url: string | null
-  status: string
+  backdrop_url: string | null
+  status: string | null
   genres: string[]
   runtime: number | null
   network: string | null
-  original_language: string
-  num_seasons: number
+  original_language: string | null
+  num_seasons: number | null
+  rating: number | null
 }
 
 export interface EpisodeMetadata {
   tvdb_id: string
   name: string
-  overview: string
-  aired: string
+  overview: string | null
+  aired: string | null
   still_url: string | null
   season_number: number
   episode_number: number
+  runtime: number | null
+}
+
+export interface BookMetadata {
+  hardcover_id: number
+  title: string
+  subtitle: string | null
+  description: string | null
+  authors: string[]
+  series: string | null
+  series_position: number | null
+  pages: number | null
+  isbn_10: string | null
+  isbn_13: string | null
+  release_date: string | null
+  cover_url: string | null
+  publisher: string | null
+  language: string | null
+  genres: string[]
 }
 
 // =============================================================================

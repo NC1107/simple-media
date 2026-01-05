@@ -138,17 +138,17 @@ export async function searchMovie(title: string, year?: string): Promise<MovieMe
       tmdb_id: details.id,
       title: details.title,
       original_title: details.original_title,
-      overview: details.overview,
-      release_year: details.release_date?.split('-')[0] || '',
+      overview: details.overview || null,
+      release_year: details.release_date?.split('-')[0] || null,
       poster_url: details.poster_path ? `${TMDB_IMAGE_BASE}/w500${details.poster_path}` : null,
       backdrop_url: details.backdrop_path ? `${TMDB_IMAGE_BASE}/original${details.backdrop_path}` : null,
-      rating: details.vote_average,
-      vote_count: details.vote_count,
-      genres: details.genres.map(g => g.name),
-      runtime: details.runtime,
-      tagline: details.tagline,
-      status: details.status,
-      original_language: details.original_language
+      rating: details.vote_average || null,
+      vote_count: details.vote_count || null,
+      genres: details.genres?.map(g => g.name) || [],
+      runtime: details.runtime || null,
+      tagline: details.tagline || null,
+      status: details.status || null,
+      original_language: details.original_language || null
     }
   } catch (error) {
     console.error('Error fetching movie metadata:', error)

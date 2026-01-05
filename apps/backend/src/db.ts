@@ -93,11 +93,21 @@ export async function insertMediaItem(item: MediaItem): Promise<number> {
   
   if (existing) {
     // Update existing item, preserving the ID
-    await database.db.execute({
-      sql: `UPDATE media_items SET type = ?, title = ?, file_size = ?, last_scanned = ?, metadata_json = ?
-            WHERE id = ?`,
-      args: [item.type, item.title, item.file_size || null, item.last_scanned, item.metadata_json || null, existing.id]
-    })
+    // Only update metadata_json if a new value is provided
+    if (item.metadata_json !== undefined) {
+      await database.db.execute({
+        sql: `UPDATE media_items SET type = ?, title = ?, file_size = ?, last_scanned = ?, metadata_json = ?
+              WHERE id = ?`,
+        args: [item.type, item.title, item.file_size || null, item.last_scanned, item.metadata_json, existing.id]
+      })
+    } else {
+      // Don't update metadata_json, preserve existing
+      await database.db.execute({
+        sql: `UPDATE media_items SET type = ?, title = ?, file_size = ?, last_scanned = ?
+              WHERE id = ?`,
+        args: [item.type, item.title, item.file_size || null, item.last_scanned, existing.id]
+      })
+    }
     return existing.id as number
   } else {
     // Insert new item
@@ -156,6 +166,14 @@ export async function getMediaItemByIdOrPath(idOrPath: string): Promise<MediaIte
   
   // Fall back to path lookup for backwards compatibility
   return await getMediaItemByPath(idOrPath)
+}
+
+export async function deleteMediaItem(id: number): Promise<void> {
+  const database = getDatabase()
+  await database.db.execute({
+    sql: 'DELETE FROM media_items WHERE id = ?',
+    args: [id]
+  })
 }
 
 export async function getTVEpisodesByShow(showId: number): Promise<TVEpisode[]> {

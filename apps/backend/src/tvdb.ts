@@ -182,15 +182,17 @@ export async function searchTVShow(title: string, year?: string): Promise<TVShow
       return {
         tvdb_id: showId,
         title: show.name,
-        overview: show.overview || '',
-        first_air_year: show.year || show.first_air_time?.split('-')[0] || '',
+        overview: show.overview || null,
+        first_air_year: show.year || show.first_air_time?.split('-')[0] || null,
         poster_url: show.image_url || null,
-        status: show.status || 'Unknown',
+        backdrop_url: null,
+        status: show.status || null,
         genres: [],
         runtime: null,
         network: null,
-        original_language: show.primary_language || '',
-        num_seasons: 0
+        original_language: show.primary_language || null,
+        num_seasons: null,
+        rating: null
       }
     }
 
@@ -202,15 +204,17 @@ export async function searchTVShow(title: string, year?: string): Promise<TVShow
     return {
       tvdb_id: extendedId,
       title: extended.name,
-      overview: extended.overview || '',
-      first_air_year: extended.year || extended.first_air_time?.split('-')[0] || '',
+      overview: extended.overview || null,
+      first_air_year: extended.year || extended.first_air_time?.split('-')[0] || null,
       poster_url: extended.image || show.image_url || null,
-      status: extended.status?.name || 'Unknown',
+      backdrop_url: extended.backdrop || null,
+      status: extended.status?.name || null,
       genres: extended.genres?.map(g => g.name) || [],
-      runtime: extended.averageRuntime,
+      runtime: extended.averageRuntime || null,
       network: extended.latestNetwork?.name || extended.originalNetwork?.name || null,
-      original_language: extended.originalLanguage || '',
-      num_seasons: extended.seasons?.length || 0
+      original_language: extended.originalLanguage || null,
+      num_seasons: extended.seasons?.length || null,
+      rating: extended.score || null
     }
   } catch (error) {
     console.error('TVDB search error:', error)
@@ -277,11 +281,12 @@ export async function getEpisodeMetadata(seriesId: string, seasonNumber: number,
     return {
       tvdb_id: episode.id?.toString() || '',
       name: episode.name || `Episode ${episodeNumber}`,
-      overview: episode.overview || '',
-      aired: episode.aired || '',
+      overview: episode.overview || null,
+      aired: episode.aired || null,
       still_url: episode.image || null,
       season_number: seasonNumber,
-      episode_number: episodeNumber
+      episode_number: episodeNumber,
+      runtime: episode.runtime || null
     }
   } catch (error) {
     console.error('TVDB episode fetch error:', error)

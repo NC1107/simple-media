@@ -9,13 +9,32 @@ export async function movieRoutes(fastify: FastifyInstance) {
       const movies = await getMediaItemsByType('movie')
 
       return {
-        movies: movies.map(movie => ({
-          id: movie.id!.toString(),
-          name: movie.title,
-          path: movie.path,
-          fileSize: movie.file_size,
-          metadata: movie.metadata_json ? JSON.parse(movie.metadata_json) : null
-        })),
+        movies: movies.map(movie => {
+          const metadata = movie.metadata_json ? JSON.parse(movie.metadata_json) : null
+          return {
+            id: movie.id!.toString(),
+            name: movie.title,
+            path: movie.path,
+            fileSize: movie.file_size,
+            posterUrl: metadata?.poster_url || null,
+            metadata: metadata ? {
+              tmdb_id: metadata.tmdb_id,
+              title: metadata.title,
+              original_title: metadata.original_title,
+              overview: metadata.overview,
+              release_year: metadata.release_year,
+              poster_url: metadata.poster_url,
+              backdrop_url: metadata.backdrop_url,
+              rating: metadata.rating,
+              vote_count: metadata.vote_count,
+              genres: metadata.genres || [],
+              runtime: metadata.runtime,
+              tagline: metadata.tagline,
+              status: metadata.status,
+              original_language: metadata.original_language
+            } : null
+          }
+        }),
         total: movies.length
       }
     } catch (error) {

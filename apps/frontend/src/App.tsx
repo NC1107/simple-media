@@ -26,13 +26,23 @@ function MovieDetailWrapper() {
 function BookDetailWrapper() {
   const { bookId } = useParams<{ bookId: string }>()
   const navigate = useNavigate()
-  return <BookDetail bookId={decodeURIComponent(bookId || '')} onBack={() => navigate('/books')} />
+  const location = useLocation()
+  
+  // Determine where to go back based on where we came from
+  const handleBack = () => {
+    // Try to determine the book type from the location state or default to books
+    const referrer = location.state?.from || '/books'
+    navigate(referrer)
+  }
+  
+  return <BookDetail bookId={decodeURIComponent(bookId || '')} onBack={handleBack} />
 }
 
 function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [booksExpanded, setBooksExpanded] = useState(true)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
@@ -49,7 +59,6 @@ function App() {
 
   const handleNavigation = (path: string) => {
     navigate(path)
-    setMenuOpen(false)
   }
 
   const isActive = (path: string) => {
@@ -109,20 +118,83 @@ function App() {
 
           {/* Menu Items */}
           <nav className="space-y-1">
-            <button
-              onClick={() => handleNavigation('/books')}
-              className={`w-full flex items-center px-3 py-2.5 text-sm rounded-lg transition-colors ${
-                isActive('/books')
-                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              } ${!menuOpen ? 'justify-center' : ''}`}
-              title="Books"
-            >
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-              {menuOpen && <span className="ml-3">Books</span>}
-            </button>
+            {/* Books Section with nested items */}
+            <div>
+              <button
+                onClick={() => {
+                  handleNavigation('/books')
+                  if (menuOpen) setBooksExpanded(true)
+                }}
+                className={`w-full flex items-center px-3 py-2.5 text-sm rounded-lg transition-colors ${
+                  isActive('/audiobooks') || isActive('/ebooks') || isActive('/books')
+                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                } ${!menuOpen ? 'justify-center' : ''}`}
+                title="Books"
+              >
+                {!menuOpen && isActive('/audiobooks') ? (
+                  <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                ) : !menuOpen && isActive('/ebooks') ? (
+                  <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                )}
+                {menuOpen && (
+                  <>
+                    <span className="ml-3 flex-1 text-left">Books</span>
+                    <svg 
+                      className={`w-4 h-4 transition-transform ${booksExpanded ? 'rotate-90' : ''}`}
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </>
+                )}
+              </button>
+              
+              {/* Nested items - only show when expanded and menu is open */}
+              {menuOpen && booksExpanded && (
+                <div className="ml-4 mt-1 space-y-1">
+                  <button
+                    onClick={() => handleNavigation('/ebooks')}
+                    className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
+                      isActive('/ebooks')
+                        ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    }`}
+                    title="Ebooks"
+                  >
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="ml-3">Ebooks</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => handleNavigation('/audiobooks')}
+                    className={`w-full flex items-center px-3 py-2 text-sm rounded-lg transition-colors ${
+                      isActive('/audiobooks')
+                        ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    }`}
+                    title="Audiobooks"
+                  >
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    </svg>
+                    <span className="ml-3">Audiobooks</span>
+                  </button>
+                </div>
+              )}
+            </div>
             
             <button
               onClick={() => handleNavigation('/tv-shows')}
@@ -203,7 +275,9 @@ function App() {
           <Route path="/tv-shows/:showId" element={<TVShowDetailWrapper />} />
           <Route path="/movies" element={<Movies onMovieSelect={(id) => navigate(`/movies/${encodeURIComponent(id)}`)} />} />
           <Route path="/movies/:movieId" element={<MovieDetailWrapper />} />
-          <Route path="/books" element={<Books onBookSelect={(id) => navigate(`/books/${encodeURIComponent(id)}`)} />} />
+          <Route path="/books" element={<Books onBookSelect={(id) => navigate(`/books/${encodeURIComponent(id)}`, { state: { from: '/books' } })} />} />
+          <Route path="/audiobooks" element={<Books type="audiobook" onBookSelect={(id) => navigate(`/books/${encodeURIComponent(id)}`, { state: { from: '/audiobooks' } })} />} />
+          <Route path="/ebooks" element={<Books type="ebook" onBookSelect={(id) => navigate(`/books/${encodeURIComponent(id)}`, { state: { from: '/ebooks' } })} />} />
           <Route path="/books/:bookId" element={<BookDetailWrapper />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>

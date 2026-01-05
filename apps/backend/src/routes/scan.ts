@@ -163,6 +163,54 @@ export async function scanRoutes(fastify: FastifyInstance) {
     }
   })
 
+  // Scan audiobooks only
+  fastify.post('/api/scan/audiobooks', async (request, reply) => {
+    try {
+      const booksPath = process.env.BOOKS_PATH || '/books'
+      const audiobooksPath = `${booksPath}/audiobooks`
+
+      setProgressCallback(emitScanProgress)
+      fastify.log.info('Starting audiobooks scan...')
+      const result = await scanBooks(audiobooksPath, 'audiobook')
+      fastify.log.info('Audiobooks scan completed')
+      emitScanProgress({ type: 'complete', category: 'books' })
+
+      return {
+        success: true,
+        added: result.added,
+        updated: result.updated,
+        errors: result.errors.length
+      }
+    } catch (error) {
+      fastify.log.error(error)
+      return reply.status(500).send({ error: 'Failed to scan audiobooks directory' })
+    }
+  })
+
+  // Scan ebooks only
+  fastify.post('/api/scan/ebooks', async (request, reply) => {
+    try {
+      const booksPath = process.env.BOOKS_PATH || '/books'
+      const ebooksPath = `${booksPath}/ebooks`
+
+      setProgressCallback(emitScanProgress)
+      fastify.log.info('Starting ebooks scan...')
+      const result = await scanBooks(ebooksPath, 'ebook')
+      fastify.log.info('Ebooks scan completed')
+      emitScanProgress({ type: 'complete', category: 'books' })
+
+      return {
+        success: true,
+        added: result.added,
+        updated: result.updated,
+        errors: result.errors.length
+      }
+    } catch (error) {
+      fastify.log.error(error)
+      return reply.status(500).send({ error: 'Failed to scan ebooks directory' })
+    }
+  })
+
   // Clear metadata for movies
   fastify.post('/api/metadata/clear/movies', async (request, reply) => {
     try {

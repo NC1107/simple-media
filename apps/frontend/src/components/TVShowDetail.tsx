@@ -12,21 +12,24 @@ interface TVShowData {
   id: string
   name: string
   path: string
-  metadata_json?: string
+  posterUrl?: string | null
+  metadata?: TVShowMetadata | null
 }
 
 interface TVShowMetadata {
   tvdb_id: string
   title: string
-  overview: string
-  first_air_year: string
+  overview: string | null
+  first_air_year: string | null
   poster_url: string | null
-  status: string
+  backdrop_url: string | null
+  status: string | null
   genres: string[]
   runtime: number | null
   network: string | null
-  original_language: string
-  num_seasons: number
+  original_language: string | null
+  num_seasons: number | null
+  rating: number | null
 }
 
 interface Season {
@@ -40,19 +43,22 @@ interface Episode {
   id: string
   name: string
   episodeNumber: number
+  seasonNumber: number
   path: string
   fileSize?: number
-  metadata_json?: string
+  stillUrl?: string | null
+  metadata?: EpisodeMetadata | null
 }
 
 interface EpisodeMetadata {
   tvdb_id: string
   name: string
-  overview: string
-  aired: string
+  overview: string | null
+  aired: string | null
   still_url: string | null
   season_number: number
   episode_number: number
+  runtime: number | null
 }
 
 export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
@@ -79,15 +85,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
       const data = await response.json()
       const foundShow = data.shows.find((s: TVShowData) => s.id === showId)
       setShow(foundShow || null)
-      
-      // Parse metadata if available
-      if (foundShow?.metadata_json) {
-        try {
-          setMetadata(JSON.parse(foundShow.metadata_json))
-        } catch (e) {
-          console.error('Failed to parse metadata:', e)
-        }
-      }
+      setMetadata(foundShow?.metadata || null)
     } catch (err) {
       console.error(err)
     } finally {
@@ -175,7 +173,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
       // Clear episode metadata from state
       const clearedEpisodes: { [seasonId: string]: Episode[] } = {}
       Object.entries(episodes).forEach(([seasonId, eps]) => {
-        clearedEpisodes[seasonId] = eps.map(ep => ({ ...ep, metadata_json: undefined }))
+        clearedEpisodes[seasonId] = eps.map(ep => ({ ...ep, metadata: null, stillUrl: null }))
       })
       setEpisodes(clearedEpisodes)
       
@@ -193,18 +191,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
 
   const handleEpisodeClick = (episode: Episode) => {
     setSelectedEpisode(episode)
-    
-    // Parse existing metadata if available
-    if (episode.metadata_json) {
-      try {
-        setEpisodeMetadata(JSON.parse(episode.metadata_json))
-      } catch (e) {
-        console.error('Failed to parse episode metadata:', e)
-        setEpisodeMetadata(null)
-      }
-    } else {
-      setEpisodeMetadata(null)
-    }
+    setEpisodeMetadata(episode.metadata || null)
   }
 
   const handleFetchEpisodeMetadata = async () => {
@@ -235,14 +222,14 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
         const seasonEpisodes = prev[seasonId] || []
         const updatedEpisodes = seasonEpisodes.map(ep => 
           ep.id === selectedEpisode.id 
-            ? { ...ep, metadata_json: JSON.stringify(result.metadata) }
+            ? { ...ep, metadata: result.metadata, stillUrl: result.metadata.still_url }
             : ep
         )
         return { ...prev, [seasonId]: updatedEpisodes }
       })
       
       // Update the selected episode to reflect new metadata
-      setSelectedEpisode(prev => prev ? { ...prev, metadata_json: JSON.stringify(result.metadata) } : null)
+      setSelectedEpisode(prev => prev ? { ...prev, metadata: result.metadata, stillUrl: result.metadata.still_url } : null)
     } catch (error) {
       console.error('Failed to fetch episode metadata:', error)
       showToast('Failed to fetch episode metadata', 'error')
@@ -295,8 +282,8 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
         {/* Poster placeholder */}
         <div className="md:col-span-1">
           <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center shadow-lg overflow-hidden">
-            {metadata?.poster_url ? (
-              <img src={resolveImageUrl(metadata.poster_url, show?.path || '', undefined)} alt={metadata.title} className="w-full h-full object-cover" />
+            {(show?.posterUrl || metadata?.poster_url) ? (
+              <img src={resolveImageUrl(show?.posterUrl || metadata?.poster_url || '', show?.path || '', undefined)} alt={metadata?.title || show?.name || 'TV Show'} className="w-full h-full object-cover" />
             ) : (
               <svg
                 className="w-24 h-24 text-gray-400 dark:text-gray-500"
@@ -359,7 +346,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
                     <dd className="text-gray-900 dark:text-white">{metadata.runtime} min</dd>
                   </div>
                 )}
-                {metadata.num_seasons > 0 && (
+                {metadata.num_seasons && metadata.num_seasons > 0 && (
                   <div>
                     <dt className="font-medium text-gray-600 dark:text-gray-400">Seasons</dt>
                     <dd className="text-gray-900 dark:text-white">{metadata.num_seasons}</dd>
@@ -469,16 +456,7 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
                         </div>
                       )}
                       {episodes[season.id]?.map((episode) => {
-                        // Parse episode metadata for thumbnail
-                        let episodeThumb: string | null = null
-                        if (episode.metadata_json) {
-                          try {
-                            const epMeta = JSON.parse(episode.metadata_json)
-                            episodeThumb = epMeta.still_url
-                          } catch (e) {
-                            // Ignore parse errors
-                          }
-                        }
+                        const episodeThumb = episode.stillUrl || episode.metadata?.still_url
 
                         return (
                           <div 

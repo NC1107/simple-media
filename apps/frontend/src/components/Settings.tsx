@@ -26,8 +26,10 @@ function Settings() {
   const [confirmDialog, setConfirmDialog] = useState<{ type: string; isOpen: boolean }>({ type: '', isOpen: false })
   const [testingTMDB, setTestingTMDB] = useState(false)
   const [testingTVDB, setTestingTVDB] = useState(false)
+  const [testingHardcover, setTestingHardcover] = useState(false)
   const [tmdbResult, setTmdbResult] = useState<{ success: boolean; message: string } | null>(null)
   const [tvdbResult, setTvdbResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [hardcoverResult, setHardcoverResult] = useState<{ success: boolean; message: string } | null>(null)
 
   useEffect(() => {
     fetchSettings()
@@ -205,6 +207,32 @@ function Settings() {
       showToast('Failed to test TVDB connection', 'error')
     } finally {
       setTestingTVDB(false)
+    }
+  }
+
+  const handleTestHardcover = async () => {
+    setTestingHardcover(true)
+    setHardcoverResult(null)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/test-api-connections`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to test Hardcover connection')
+      }
+
+      const results = await response.json()
+      setHardcoverResult(results.hardcover)
+      
+      if (results.hardcover.success) {
+        showToast('Hardcover connection successful', 'success')
+      } else {
+        showToast('Hardcover connection failed', 'error')
+      }
+    } catch (error) {
+      console.error('Failed to test Hardcover connection:', error)
+      showToast('Failed to test Hardcover connection', 'error')
+    } finally {
+      setTestingHardcover(false)
     }
   }
 
@@ -419,7 +447,7 @@ function Settings() {
                   Enable Metadata Scanning
                 </label>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Automatically fetch book metadata during library scans
+                  Automatically fetch book metadata from Hardcover during library scans
                 </p>
               </div>
               <button
@@ -440,16 +468,50 @@ function Settings() {
             </div>
 
             <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => setConfirmDialog({ type: 'book', isOpen: true })}
-                disabled={clearingBooks}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-              >
-                {clearingBooks ? 'Clearing...' : 'Clear Book Metadata'}
-              </button>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                Remove all metadata for books. The book files will remain in your library.
-              </p>
+              <div className="mb-3">
+                <button
+                  onClick={handleTestHardcover}
+                  disabled={testingHardcover}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  {testingHardcover ? 'Testing...' : 'Test Hardcover Connection'}
+                </button>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Test your Hardcover API connection for book metadata.
+                </p>
+                {hardcoverResult && (
+                  <div className={`p-3 rounded-lg mt-3 ${hardcoverResult.success ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-800 dark:text-gray-200">Status</span>
+                      {hardcoverResult.success ? (
+                        <svg className="w-5 h-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </div>
+                    <p className={`text-sm mt-1 ${hardcoverResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
+                      {hardcoverResult.message}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setConfirmDialog({ type: 'book', isOpen: true })}
+                  disabled={clearingBooks}
+                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  {clearingBooks ? 'Clearing...' : 'Clear Book Metadata'}
+                </button>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                  Remove all metadata for books. The book files will remain in your library.
+                </p>
+              </div>
             </div>
           </div>
         </div>

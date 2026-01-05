@@ -1,8 +1,9 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { insertMediaItem, insertTVEpisode, getMediaItemByPath, getSetting } from './db.js'
+import { insertMediaItem, insertTVEpisode, getMediaItemByPath, getSetting, getMediaItemsByType, deleteMediaItem } from './db.js'
 import { searchMovie, parseMovieTitle } from './tmdb.js'
 import { searchTVShow, parseTVShowTitle, getEpisodeMetadata } from './tvdb.js'
+import { searchBook } from './hardcover.js'
 import { saveMoviePoster, saveTVShowPoster, saveEpisodeThumb } from './imageDownloader.js'
 
 interface ScanResult {
@@ -100,7 +101,7 @@ export async function scanTVShows(tvShowsPath: string): Promise<ScanResult> {
           title: showEntry.name,
           path: relativePath,
           last_scanned: now,
-          metadata_json: metadataJson
+          metadata_json: metadataJson || existingShow?.metadata_json || undefined
         })
         
         if (existingShow) {
@@ -292,7 +293,7 @@ export async function scanMovies(moviesPath: string, skipMetadata = false): Prom
           path: entry.name,
           file_size: fileSize,
           last_scanned: now,
-          metadata_json: metadataJson
+          metadata_json: metadataJson || existingMovie?.metadata_json || undefined
         })
         
         if (existingMovie) {
@@ -324,21 +325,57 @@ export async function scanBooks(booksPath: string): Promise<ScanResult> {
       return result
     }
     
-    // Scan both audiobooks and ebooks subdirectories
-    const subdirs = ['audiobooks', 'ebooks']
+    // Clean up orphaned database entries (files that no longer exist)
+    console.log('Checking for orphaned book entries...')
+    const allBooks = await getMediaItemsByType('audiobook')
+    const allEbooks = await getMediaItemsByType('ebook')
+    const allBookEntries = [...allBooks, ...allEbooks]
+    
+    for (const book of allBookEntries) {
+      // Reconstruct the full path from the database entry
+      const fullPath = path.join(booksPath.replace(/\/(audiobooks|ebooks)$/, ''), book.path)
+      try {
+        await fs.access(fullPath)
+      } catch {
+        console.log(`Removing orphaned entry: ${book.path} (id: ${book.id})`)
+        await deleteMediaItem(book.id as number)
+      }
+    }
+    
+    // Determine if we're already at a specific subdirectory level or the parent books directory
+    const pathParts = booksPath.split(path.sep)
+    const lastDir = pathParts[pathParts.length - 1]
+    
+    let subdirs: string[]
+    let basePath: string
+    
+    if (lastDir === 'audiobooks' || lastDir === 'ebooks') {
+      // We're already at a specific type directory - treat it as the only subdir
+      subdirs = ['']
+      basePath = booksPath
+    } else {
+      // We're at the parent books directory - scan both subdirs
+      subdirs = ['audiobooks', 'ebooks']
+      basePath = booksPath
+    }
     
     for (const subdir of subdirs) {
-      const subdirPath = path.join(booksPath, subdir)
+      const subdirPath = subdir ? path.join(basePath, subdir) : basePath
       
       try {
         await fs.access(subdirPath)
       } catch {
-        console.log(`${subdir} directory does not exist: ${subdirPath}`)
+        console.log(`${subdir || 'books'} directory does not exist: ${subdirPath}`)
         continue
       }
       
-      const mediaType = subdir === 'audiobooks' ? 'audiobook' : 'ebook'
-      console.log(`Scanning ${subdir}...`)
+      // Determine media type from path
+      const mediaType = subdirPath.includes('audiobooks') || subdirPath.includes('audiobook') ? 'audiobook' : 'ebook'
+      console.log(`Scanning ${subdir || lastDir}...`)
+      
+      // Check if metadata scanning is enabled
+      const metadataEnabled = await getSetting('books_metadata_enabled')
+      const shouldFetchMetadata = metadataEnabled === 'true'
       
       // Scan authors
       const authors = await fs.readdir(subdirPath, { withFileTypes: true })
@@ -373,34 +410,73 @@ export async function scanBooks(booksPath: string): Promise<ScanResult> {
           }
           
           // Store path as: {audiobooks|ebooks}/author/series
-          const relativePath = path.join(subdir, authorDir.name, seriesDir.name)
+          // When subdir is empty (single-type scan), use the media type from the path
+          const pathPrefix = subdir || (mediaType === 'audiobook' ? 'audiobooks' : 'ebooks')
+          const relativePath = path.join(pathPrefix, authorDir.name, seriesDir.name)
           
           const existingBook = await getMediaItemByPath(relativePath)
+          let metadataJson = existingBook?.metadata_json
           
-          await insertMediaItem({
-            type: mediaType as 'audiobook' | 'ebook',
-            title: seriesDir.name,
-            path: relativePath,
-            file_size: fileSize,
-            last_scanned: now
-          })
-          
-          if (existingBook) {
-            result.updated++
+          if (!metadataJson && shouldFetchMetadata) {
+            console.log(`Fetching Hardcover metadata for: ${authorDir.name} - ${seriesDir.name}`)
+            emitProgress({ 
+              type: 'scanning', 
+              category: 'books', 
+              item: `${authorDir.name} - ${seriesDir.name}`, 
+              status: 'fetching_metadata' 
+            })
+            
+            const metadata = await searchBook(seriesDir.name, authorDir.name)
+            if (metadata) {
+              metadataJson = JSON.stringify(metadata)
+              console.log(`Cached Hardcover metadata for: ${metadata.title}`)
+              emitProgress({
+                type: 'scanned',
+                category: 'books',
+                item: `${authorDir.name} - ${seriesDir.name}`,
+                status: 'metadata_fetched',
+                title: metadata.title
+              })
+            } else {
+              console.log(`No Hardcover metadata found for: ${authorDir.name} - ${seriesDir.name}`)
+              emitProgress({
+                type: 'scanned',
+                category: 'books',
+                item: `${authorDir.name} - ${seriesDir.name}`,
+                status: 'no_metadata'
+              })
+            }
+          } else if (!metadataJson) {
+            console.log(`Metadata scanning disabled for books, skipping: ${authorDir.name} - ${seriesDir.name}`)
+            emitProgress({
+              type: 'scanned',
+              category: 'books',
+              item: `${authorDir.name} - ${seriesDir.name}`,
+              status: 'skipped'
+            })
+          } else {
+            console.log(`Using cached metadata for: ${authorDir.name} - ${seriesDir.name}`)
             emitProgress({
               type: 'scanned',
               category: 'books',
               item: `${authorDir.name} - ${seriesDir.name}`,
               status: 'cached'
             })
+          }
+          
+          await insertMediaItem({
+            type: mediaType as 'audiobook' | 'ebook',
+            title: seriesDir.name,
+            path: relativePath,
+            file_size: fileSize,
+            last_scanned: now,
+            metadata_json: metadataJson || null
+          })
+          
+          if (existingBook) {
+            result.updated++
           } else {
             result.added++
-            emitProgress({
-              type: 'scanned',
-              category: 'books',
-              item: `${authorDir.name} - ${seriesDir.name}`,
-              status: 'added'
-            })
           }
           
           console.log(`  [${mediaType}] ${authorDir.name} - ${seriesDir.name}`)

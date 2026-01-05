@@ -6,6 +6,8 @@ interface Book {
   id: string
   name: string
   path: string
+  type?: string
+  coverUrl?: string | null
 }
 
 interface BooksResponse {
@@ -16,10 +18,12 @@ interface BooksResponse {
 
 interface BooksProps {
   onBookSelect: (bookId: string) => void
+  type?: 'audiobook' | 'ebook'
 }
 
-export default function Books({ onBookSelect }: BooksProps) {
+export default function Books({ onBookSelect, type }: BooksProps) {
   const [books, setBooks] = useState<Book[]>([])
+  const [allBooks, setAllBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
@@ -28,6 +32,24 @@ export default function Books({ onBookSelect }: BooksProps) {
   useEffect(() => {
     fetchBooks()
   }, [])
+
+  useEffect(() => {
+    // Re-filter when type changes
+    if (type) {
+      setBooks(allBooks.filter(book => book.type === type))
+    } else {
+      setBooks(allBooks)
+    }
+  }, [type, allBooks])
+
+  useEffect(() => {
+    // Re-filter when type changes
+    if (type) {
+      setBooks(allBooks.filter(book => book.type === type))
+    } else {
+      setBooks(allBooks)
+    }
+  }, [type, allBooks])
 
   const fetchBooks = async () => {
     try {
@@ -38,7 +60,15 @@ export default function Books({ onBookSelect }: BooksProps) {
         setError(data.message)
       }
       
-      setBooks(data.books || [])
+      const fetchedBooks = data.books || []
+      setAllBooks(fetchedBooks)
+      
+      // Filter by type if specified
+      if (type) {
+        setBooks(fetchedBooks.filter(book => book.type === type))
+      } else {
+        setBooks(fetchedBooks)
+      }
     } catch (err) {
       setError('Failed to load books')
       console.error(err)
@@ -61,10 +91,15 @@ export default function Books({ onBookSelect }: BooksProps) {
         // Refresh the books list to get updated data
         const response = await fetch(`${API_BASE_URL}/api/books`)
         const booksData: BooksResponse = await response.json()
-        setBooks(booksData.books || [])
+        const fetchedBooks = booksData.books || []
+        setAllBooks(fetchedBooks)
+        
+        // Filter by type if specified
+        const filteredBooks = type ? fetchedBooks.filter(book => book.type === type) : fetchedBooks
+        setBooks(filteredBooks)
         
         // Find the book that was just scanned and mark it
-        const scannedBook = (booksData.books || []).find(b => data.item.includes(b.name))
+        const scannedBook = filteredBooks.find(b => data.item.includes(b.name))
         if (scannedBook) {
           setJustScanned(prev => new Set([...prev, scannedBook.id]))
           // Remove the indicator after 2 seconds
@@ -86,7 +121,14 @@ export default function Books({ onBookSelect }: BooksProps) {
     }
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/scan/books`, {
+      // Use type-specific endpoint if type is specified
+      const scanEndpoint = type === 'audiobook' 
+        ? `${API_BASE_URL}/api/scan/audiobooks`
+        : type === 'ebook'
+        ? `${API_BASE_URL}/api/scan/ebooks`
+        : `${API_BASE_URL}/api/scan/books`
+      
+      const response = await fetch(scanEndpoint, {
         method: 'POST'
       })
 
@@ -95,7 +137,8 @@ export default function Books({ onBookSelect }: BooksProps) {
       }
 
       const result = await response.json()
-      showToast(`Books scan completed! Added: ${result.added}, Updated: ${result.updated}`, 'success')
+      const typeLabel = type === 'audiobook' ? 'Audiobooks' : type === 'ebook' ? 'Ebooks' : 'Books'
+      showToast(`${typeLabel} scan completed! Added: ${result.added}, Updated: ${result.updated}`, 'success')
       
       // Final refresh
       await fetchBooks()
@@ -138,14 +181,21 @@ export default function Books({ onBookSelect }: BooksProps) {
     <div className="p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Books ({books.length})
+          {type === 'audiobook' ? 'Audiobooks' : type === 'ebook' ? 'Ebooks' : 'Books'} ({books.length})
         </h2>
         <button
           onClick={handleScan}
           disabled={scanning}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          {scanning ? 'Scanning...' : 'Scan Books'}
+          {scanning 
+            ? 'Scanning...' 
+            : type === 'audiobook'
+            ? 'Scan Audiobooks'
+            : type === 'ebook'
+            ? 'Scan Ebooks'
+            : 'Scan Books'
+          }
         </button>
       </div>
       
@@ -161,20 +211,28 @@ export default function Books({ onBookSelect }: BooksProps) {
               isJustScanned ? 'ring-4 ring-green-500 ring-opacity-50' : ''
             }`}
           >
-            <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded mb-2 flex items-center justify-center">
-              <svg
-                className="w-12 h-12 text-gray-400 dark:text-gray-500"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+            <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded mb-2 flex items-center justify-center overflow-hidden">
+              {book.coverUrl ? (
+                <img 
+                  src={book.coverUrl} 
+                  alt={book.name}
+                  className="w-full h-full object-cover"
                 />
-              </svg>
+              ) : (
+                <svg
+                  className="w-12 h-12 text-gray-400 dark:text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                  />
+                </svg>
+              )}
             </div>
             <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate" title={book.name}>
               {book.name}

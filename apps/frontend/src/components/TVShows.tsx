@@ -7,11 +7,24 @@ interface TVShow {
   id: string
   name: string
   path: string
-  metadata_json?: string
+  posterUrl?: string | null
+  metadata?: TVShowMetadata | null
 }
 
 interface TVShowMetadata {
+  tvdb_id: string
+  title: string
+  overview: string | null
+  first_air_year: string | null
   poster_url: string | null
+  backdrop_url: string | null
+  status: string | null
+  genres: string[]
+  runtime: number | null
+  network: string | null
+  original_language: string | null
+  num_seasons: number | null
+  rating: number | null
 }
 
 interface TVShowsResponse {
@@ -157,16 +170,7 @@ export default function TVShows({ onShowSelect }: TVShowsProps) {
       
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {shows.map((show) => {
-          let posterUrl: string | null = null
-          if (show.metadata_json) {
-            try {
-              const metadata: TVShowMetadata = JSON.parse(show.metadata_json)
-              posterUrl = metadata.poster_url
-            } catch (e) {
-              console.error('Failed to parse metadata:', e)
-            }
-          }
-          
+          const posterUrl = show.posterUrl || show.metadata?.poster_url || null
           const isJustScanned = justScanned.has(show.id)
           
           return (

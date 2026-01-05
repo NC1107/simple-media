@@ -35,20 +35,23 @@ export async function settingsRoutes(fastify: FastifyInstance) {
     }
   })
 
-  // Test TMDB/TVDB API connections
+  // Test TMDB/TVDB/Hardcover API connections
   fastify.get('/api/test-api-connections', async (request, reply) => {
     try {
       const { testTMDBConnection } = await import('../tmdb.js')
       const { testTVDBConnection } = await import('../tvdb.js')
+      const { testHardcoverConnection } = await import('../hardcover.js')
 
-      const [tmdbResult, tvdbResult] = await Promise.all([
+      const [tmdbResult, tvdbResult, hardcoverResult] = await Promise.all([
         testTMDBConnection(),
-        testTVDBConnection()
+        testTVDBConnection(),
+        testHardcoverConnection()
       ])
 
       return {
         tmdb: tmdbResult,
-        tvdb: tvdbResult
+        tvdb: tvdbResult,
+        hardcover: hardcoverResult
       }
     } catch (error) {
       fastify.log.error(error, 'Failed to test API connections')
