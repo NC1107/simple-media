@@ -10,6 +10,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - VITE_API_URL=http://backend:3001
     depends_on:
       - backend
 
@@ -25,10 +26,16 @@ services:
       - E:/media/tv:/tv:ro
       - E:/media/movies:/movies:ro
       - E:/media/books:/books:ro
+      # Optional: in the scenario that you are not doing books/{ebooks,audiobooks} together.
+      # - E:/media/ebooks:/ebooks:ro
+      # - E:/media/audiobooks:/audiobooks:ro
     env_file:
       - .env
     environment:
       - NODE_ENV=development
+      # Optional: in the scenario that you are not doing books/{ebooks,audiobooks} together.
+      # - EBOOKS_PATH=/ebooks
+      # - AUDIOBOOKS_PATH=/audiobooks
 
 volumes:
   data:

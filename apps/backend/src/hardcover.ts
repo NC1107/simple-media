@@ -162,6 +162,8 @@ export async function searchBook(title: string, author?: string): Promise<BookMe
     }
 
     // Get the first result (best match by score)
+    // Note: Search results contain MORE data than the details endpoint
+    // (genres, ISBNs, publisher, language are only in search)
     const book = result.data.search.results.hits[0].document
     
     // Extract author names
@@ -183,106 +185,16 @@ export async function searchBook(title: string, author?: string): Promise<BookMe
       isbn_13: book.isbns?.find((isbn: string) => isbn.length === 13) || null,
       release_date: book.release_date || null,
       cover_url: book.image?.url || null,
-      publisher: book.publisher || null,
-      language: book.language || null,
+      publisher: null,  // Not in search results
+      language: null,   // Not in search results  
       genres: book.genres || []
     }
 
-    console.log(`Found book: "${metadata.title}" by ${authors.join(', ')}`)
+    console.log(`Found book: "${metadata.title}" by ${authors.join(', ')}, genres: ${metadata.genres.join(', ')}`)
     return metadata
 
   } catch (error) {
     console.error('Error searching Hardcover:', error)
-    return null
-  }
-}
-
-export async function getBookDetails(bookId: number): Promise<BookMetadata | null> {
-  if (!HARDCOVER_API_KEY) {
-    console.log('Hardcover API key not configured')
-    return null
-  }
-
-  try {
-    const query = `
-      query GetBook($id: Int!) {
-        books(where: {id: {_eq: $id}}, limit: 1) {
-          id
-          title
-          subtitle
-          description
-          pages
-          image
-          release_date
-          isbn_10
-          isbn_13
-          contributions {
-            author {
-              id
-              name
-            }
-          }
-          series_books {
-            series {
-              id
-              name
-            }
-            position
-          }
-        }
-      }
-    `
-    
-    const response = await rateLimitedGraphQLFetch(query, 'GetBook', { id: bookId })
-    
-    if (!response.ok) {
-      console.error(`Hardcover API error: ${response.status}`)
-      return null
-    }
-
-    const result = await response.json() as any
-    
-    if (result.errors) {
-      console.error('GraphQL errors:', result.errors)
-      return null
-    }
-
-    const books = result.data?.books
-    if (!books || books.length === 0) {
-      console.log(`Book ${bookId} not found`)
-      return null
-    }
-    
-    const book = books[0]
-    
-    const authors = book.contributions
-      ?.map((c: any) => c.author?.name)
-      .filter((name: any): name is string => !!name) || []
-
-    const seriesBook = book.series_books?.[0]
-
-    const metadata: BookMetadata = {
-      hardcover_id: book.id,
-      title: book.title,
-      subtitle: book.subtitle || null,
-      description: book.description || null,
-      authors: authors.length > 0 ? authors : [],
-      series: seriesBook?.series?.name || null,
-      series_position: seriesBook?.position || null,
-      pages: book.pages || null,
-      isbn_10: book.isbn_10 || null,
-      isbn_13: book.isbn_13 || null,
-      release_date: book.release_date || null,
-      cover_url: book.image || null,
-      publisher: null,  // Not available in details endpoint
-      language: null,    // Not available in details endpoint
-      genres: []         // Not available in details endpoint
-    }
-
-    return metadata
-
-  } catch (error) {
-    console.error('Error fetching book details:', error)
     return null
   }
 }

@@ -14,11 +14,19 @@ services:
       - ./data:/app/data
       - /mnt/mPool/tv:/tv:ro
       - /mnt/mPool/movies:/movies:ro
+      - /mnt/mPool/books:/books:ro
+      # Optional: in the scenario that you are not doing books/{ebooks,audiobooks} together.
+      # - /mnt/mPool/ebooks:/ebooks:ro
+      # - /mnt/mPool/audiobooks:/audiobooks:ro
     environment:
       - NODE_ENV=production
       - DB_PATH=/app/data/media.sqlite
       - TV_SHOWS_PATH=/tv
       - MOVIES_PATH=/movies
+      - BOOKS_PATH=/books
+      # Optional: in the scenario that you are not doing books/{ebooks,audiobooks} together.
+      # - EBOOKS_PATH=/ebooks
+      # - AUDIOBOOKS_PATH=/audiobooks
 
 volumes:
   data:

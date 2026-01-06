@@ -161,11 +161,11 @@ export default function Movies({ onMovieSelect }: MoviesProps) {
           <div
             key={movie.id}
             onClick={() => onMovieSelect(movie.id)}
-            className={`bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all overflow-hidden cursor-pointer ${
+            className={`bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-all p-4 cursor-pointer ${
               isJustScanned ? 'ring-4 ring-green-500 ring-opacity-50' : ''
             }`}
           >
-            <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+            <div className="aspect-[2/3] bg-gray-200 dark:bg-gray-700 rounded mb-2 overflow-hidden flex items-center justify-center">
               {movie.metadata?.poster_url ? (
                 <img 
                   src={movie.metadata.poster_url} 

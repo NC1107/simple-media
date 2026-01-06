@@ -8,7 +8,8 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://backend:3001',
+        // Use localhost for local dev, backend for Docker
+        target: process.env.VITE_API_URL || 'http://localhost:8101',
         changeOrigin: true,
       },
     },

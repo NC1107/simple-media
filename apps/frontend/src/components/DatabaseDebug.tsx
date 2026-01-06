@@ -64,6 +64,112 @@ export default function DatabaseDebug() {
     return new Date(timestamp).toLocaleString()
   }
 
+  const renderMetadata = (item: MediaItem, type: string) => {
+    if (!item.metadata) return null
+
+    // TV Shows
+    if (type === 'tv') {
+      return (
+        <div className="mt-3 p-3 bg-gray-900 rounded text-xs">
+          <div className="grid grid-cols-2 gap-2 text-gray-300">
+            <div><span className="text-gray-500">TVDB ID:</span> {item.metadata.tvdb_id}</div>
+            <div><span className="text-gray-500">First Aired:</span> {item.metadata.first_air_date}</div>
+            <div><span className="text-gray-500">Status:</span> {item.metadata.status}</div>
+            <div><span className="text-gray-500">Genres:</span> {item.metadata.genres?.join(', ')}</div>
+          </div>
+          {item.metadata.overview && (
+            <div className="mt-2">
+              <div className="text-gray-500 mb-1">Overview:</div>
+              <div className="text-gray-300">{item.metadata.overview}</div>
+            </div>
+          )}
+          {item.metadata.poster_url && (
+            <div className="mt-2">
+              <div className="text-gray-500 mb-1">Poster URL:</div>
+              <a href={item.metadata.poster_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
+                {item.metadata.poster_url}
+              </a>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // Movies
+    if (type === 'movie') {
+      return (
+        <div className="mt-3 p-3 bg-gray-900 rounded text-xs">
+          <div className="grid grid-cols-2 gap-2 text-gray-300">
+            <div><span className="text-gray-500">TMDB ID:</span> {item.metadata.tmdb_id}</div>
+            <div><span className="text-gray-500">Release:</span> {item.metadata.release_year}</div>
+            <div><span className="text-gray-500">Rating:</span> {item.metadata.rating}/10 ({item.metadata.vote_count} votes)</div>
+            <div><span className="text-gray-500">Genres:</span> {item.metadata.genres?.join(', ')}</div>
+          </div>
+          {item.metadata.overview && (
+            <div className="mt-2">
+              <div className="text-gray-500 mb-1">Overview:</div>
+              <div className="text-gray-300">{item.metadata.overview}</div>
+            </div>
+          )}
+          {item.metadata.poster_url && (
+            <div className="mt-2">
+              <div className="text-gray-500 mb-1">Poster URL:</div>
+              <a href={item.metadata.poster_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
+                {item.metadata.poster_url}
+              </a>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // Books
+    if (type === 'book') {
+      return (
+        <div className="mt-3 p-3 bg-gray-900 rounded text-xs">
+          <div className="grid grid-cols-2 gap-2 text-gray-300">
+            <div><span className="text-gray-500">Hardcover ID:</span> {item.metadata.hardcover_id}</div>
+            <div><span className="text-gray-500">Authors:</span> {item.metadata.authors?.join(', ')}</div>
+            {item.metadata.series && <div><span className="text-gray-500">Series:</span> {item.metadata.series} #{item.metadata.series_position}</div>}
+            {item.metadata.pages && <div><span className="text-gray-500">Pages:</span> {item.metadata.pages}</div>}
+            {item.metadata.isbn_13 && <div><span className="text-gray-500">ISBN-13:</span> {item.metadata.isbn_13}</div>}
+            {item.metadata.publisher && <div><span className="text-gray-500">Publisher:</span> {item.metadata.publisher}</div>}
+            {item.metadata.release_date && <div><span className="text-gray-500">Released:</span> {item.metadata.release_date}</div>}
+            {item.metadata.language && <div><span className="text-gray-500">Language:</span> {item.metadata.language}</div>}
+          </div>
+          {item.metadata.subtitle && (
+            <div className="mt-2">
+              <div className="text-gray-500 mb-1">Subtitle:</div>
+              <div className="text-gray-300">{item.metadata.subtitle}</div>
+            </div>
+          )}
+          {item.metadata.description && (
+            <div className="mt-2">
+              <div className="text-gray-500 mb-1">Description:</div>
+              <div className="text-gray-300">{item.metadata.description}</div>
+            </div>
+          )}
+          {item.metadata.genres && item.metadata.genres.length > 0 && (
+            <div className="mt-2">
+              <div className="text-gray-500 mb-1">Genres:</div>
+              <div className="text-gray-300">{item.metadata.genres.join(', ')}</div>
+            </div>
+          )}
+          {item.metadata.cover_url && (
+            <div className="mt-2">
+              <div className="text-gray-500 mb-1">Cover URL:</div>
+              <a href={item.metadata.cover_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
+                {item.metadata.cover_url}
+              </a>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    return null
+  }
+
   const renderMediaItems = (items: MediaItem[], type: string) => {
     return (
       <div className="space-y-2">
@@ -73,44 +179,22 @@ export default function DatabaseDebug() {
               <div className="flex-1">
                 <div className="font-semibold text-white">{item.title}</div>
                 <div className="text-xs text-gray-400 mt-1">
-                  ID: {item.id} | Size: {formatFileSize(item.file_size)} | 
+                  ID: {item.id} | Type: {item.type} | Size: {formatFileSize(item.file_size)} | 
                   Last Scanned: {formatDate(item.last_scanned)}
                 </div>
+                <div className="text-xs text-gray-500 mt-1 font-mono break-all">{item.path}</div>
               </div>
               {item.metadata_json && (
                 <button
                   onClick={() => setExpanded(expanded === `${type}-${item.id}` ? null : `${type}-${item.id}`)}
-                  className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
+                  className="ml-2 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 flex-shrink-0"
                 >
                   {expanded === `${type}-${item.id}` ? 'Hide' : 'Show'} Metadata
                 </button>
               )}
             </div>
             
-            {item.metadata && expanded === `${type}-${item.id}` && (
-              <div className="mt-3 p-3 bg-gray-900 rounded text-xs">
-                <div className="grid grid-cols-2 gap-2 text-gray-300">
-                  <div><span className="text-gray-500">TMDB ID:</span> {item.metadata.tmdb_id}</div>
-                  <div><span className="text-gray-500">Release:</span> {item.metadata.release_year}</div>
-                  <div><span className="text-gray-500">Rating:</span> {item.metadata.rating}/10 ({item.metadata.vote_count} votes)</div>
-                  <div><span className="text-gray-500">Genres:</span> {item.metadata.genres?.join(', ')}</div>
-                </div>
-                {item.metadata.overview && (
-                  <div className="mt-2">
-                    <div className="text-gray-500 mb-1">Overview:</div>
-                    <div className="text-gray-300">{item.metadata.overview}</div>
-                  </div>
-                )}
-                {item.metadata.poster_url && (
-                  <div className="mt-2">
-                    <div className="text-gray-500 mb-1">Poster URL:</div>
-                    <a href={item.metadata.poster_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
-                      {item.metadata.poster_url}
-                    </a>
-                  </div>
-                )}
-              </div>
-            )}
+            {expanded === `${type}-${item.id}` && renderMetadata(item, type)}
             
             {!item.metadata_json && (
               <div className="mt-2 text-xs text-yellow-500">No metadata available</div>

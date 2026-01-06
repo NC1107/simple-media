@@ -8,6 +8,7 @@ import MovieDetail from './components/MovieDetail'
 import Books from './components/Books'
 import BookDetail from './components/BookDetail'
 import Settings from './components/Settings'
+import Search from './components/Search'
 import { ToastContainer } from './components/Toast'
 
 // Wrapper components to use useParams
@@ -269,6 +270,13 @@ function App() {
       <div
         className={`flex-1 transition-all duration-300 ease-in-out ${menuOpen ? 'ml-64' : 'ml-16'}`}
       >
+        {/* Search bar - visible on all pages */}
+        <div className="sticky top-0 z-30 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 py-4 px-6">
+          <div className="flex justify-center">
+            <Search />
+          </div>
+        </div>
+
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/tv-shows" element={<TVShows onShowSelect={(id) => navigate(`/tv-shows/${encodeURIComponent(id)}`)} />} />

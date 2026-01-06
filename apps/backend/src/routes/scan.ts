@@ -167,7 +167,7 @@ export async function scanRoutes(fastify: FastifyInstance) {
   fastify.post('/api/scan/audiobooks', async (request, reply) => {
     try {
       const booksPath = process.env.BOOKS_PATH || '/books'
-      const audiobooksPath = `${booksPath}/audiobooks`
+      const audiobooksPath = process.env.AUDIOBOOKS_PATH || `${booksPath}/audiobooks`
 
       setProgressCallback(emitScanProgress)
       fastify.log.info('Starting audiobooks scan...')
@@ -191,7 +191,7 @@ export async function scanRoutes(fastify: FastifyInstance) {
   fastify.post('/api/scan/ebooks', async (request, reply) => {
     try {
       const booksPath = process.env.BOOKS_PATH || '/books'
-      const ebooksPath = `${booksPath}/ebooks`
+      const ebooksPath = process.env.EBOOKS_PATH || `${booksPath}/ebooks`
 
       setProgressCallback(emitScanProgress)
       fastify.log.info('Starting ebooks scan...')

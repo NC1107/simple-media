@@ -6,6 +6,7 @@ import { scanRoutes } from './scan.js'
 import { settingsRoutes } from './settings.js'
 import { imageRoutes } from './images.js'
 import { debugRoutes } from './debug.js'
+import { searchRoutes } from './search.js'
 
 export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(tvRoutes)
@@ -15,6 +16,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(settingsRoutes)
   await fastify.register(imageRoutes)
   await fastify.register(debugRoutes)
+  await fastify.register(searchRoutes)
 }
 
 export { emitScanProgress } from './scan.js'

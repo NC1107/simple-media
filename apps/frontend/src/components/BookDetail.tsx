@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { API_BASE_URL } from '../config'
+import { showToast } from './Toast'
 
 interface BookDetailProps {
   bookId: string
@@ -33,9 +34,21 @@ interface BookData {
   metadata?: BookMetadata | null
 }
 
+interface BookFile {
+  name: string
+  isDirectory: boolean
+  size: number
+  modifiedAt: string
+}
+
 export default function BookDetail({ bookId, onBack }: BookDetailProps) {
   const [book, setBook] = useState<BookData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchingMetadata, setFetchingMetadata] = useState(false)
+  const [clearingMetadata, setClearingMetadata] = useState(false)
+  const [files, setFiles] = useState<BookFile[]>([])
+  const [filesExpanded, setFilesExpanded] = useState(false)
+  const [loadingFiles, setLoadingFiles] = useState(false)
 
   useEffect(() => {
     fetchBookDetails()
@@ -69,6 +82,89 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
     } catch {
       return dateString
     }
+  }
+
+  const handleFetchMetadata = async () => {
+    if (!book) return
+
+    setFetchingMetadata(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/books/${encodeURIComponent(book.id)}/metadata`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to fetch metadata')
+      }
+
+      const result = await response.json()
+
+      // Update book state with new metadata
+      setBook(prev => prev ? { ...prev, metadata: result.metadata } : null)
+
+      showToast(`Metadata fetched for ${result.metadata.title || book.name}`, 'success')
+    } catch (error: any) {
+      console.error('Failed to fetch metadata:', error)
+      showToast(error.message || `Failed to fetch metadata for ${book.name}`, 'error')
+    } finally {
+      setFetchingMetadata(false)
+    }
+  }
+
+  const handleClearMetadata = async () => {
+    if (!book) return
+
+    setClearingMetadata(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/books/${encodeURIComponent(book.id)}/metadata/clear`, {
+        method: 'POST'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to clear metadata')
+      }
+
+      const result = await response.json()
+
+      // Clear metadata from state
+      setBook(prev => prev ? { ...prev, metadata: null } : null)
+
+      showToast(`Metadata cleared for ${book.name}`, 'success')
+    } catch (error) {
+      console.error('Failed to clear metadata:', error)
+      showToast(`Failed to clear metadata for ${book.name}`, 'error')
+    } finally {
+      setClearingMetadata(false)
+    }
+  }
+
+  const fetchFiles = async () => {
+    if (!book || files.length > 0) return
+
+    setLoadingFiles(true)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/books/${encodeURIComponent(book.id)}/files`)
+      const data = await response.json()
+
+      if (response.ok) {
+        setFiles(data.files || [])
+      } else {
+        showToast('Failed to load book files', 'error')
+      }
+    } catch (error) {
+      console.error('Failed to fetch files:', error)
+      showToast('Failed to load book files', 'error')
+    } finally {
+      setLoadingFiles(false)
+    }
+  }
+
+  const toggleFiles = () => {
+    if (!filesExpanded) {
+      fetchFiles()
+    }
+    setFilesExpanded(!filesExpanded)
   }
 
   if (loading) {
@@ -136,34 +232,84 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
               )}
             </div>
 
-            {/* Quick Stats */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Type</span>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 capitalize">
-                  {book.type || 'Book'}
-                </span>
+            {/* Metadata section */}
+            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Metadata</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleFetchMetadata}
+                    disabled={fetchingMetadata}
+                    className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {fetchingMetadata ? 'Fetching...' : metadata ? 'Refresh' : 'Fetch'}
+                  </button>
+                  {metadata && (
+                    <button
+                      onClick={handleClearMetadata}
+                      disabled={clearingMetadata}
+                      className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {clearingMetadata ? 'Clearing...' : 'Clear'}
+                    </button>
+                  )}
+                </div>
               </div>
-              
-              {metadata?.pages && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Pages</span>
-                  <span className="text-sm text-gray-900 dark:text-white font-semibold">{metadata.pages.toLocaleString()}</span>
-                </div>
-              )}
-
-              {metadata?.release_date && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Published</span>
-                  <span className="text-sm text-gray-900 dark:text-white">{formatDate(metadata.release_date)}</span>
-                </div>
-              )}
-
-              {book.fileSize && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">File Size</span>
-                  <span className="text-sm text-gray-900 dark:text-white">{formatBytes(book.fileSize)}</span>
-                </div>
+              {metadata ? (
+                <dl className="space-y-2 text-xs">
+                  {metadata.release_date && (
+                    <div>
+                      <dt className="font-medium text-gray-600 dark:text-gray-400">Published</dt>
+                      <dd className="text-gray-900 dark:text-white">{formatDate(metadata.release_date)}</dd>
+                    </div>
+                  )}
+                  {metadata.authors && metadata.authors.length > 0 && (
+                    <div>
+                      <dt className="font-medium text-gray-600 dark:text-gray-400">Authors</dt>
+                      <dd className="text-gray-900 dark:text-white">{metadata.authors.join(', ')}</dd>
+                    </div>
+                  )}
+                  {metadata.series && (
+                    <div>
+                      <dt className="font-medium text-gray-600 dark:text-gray-400">Series</dt>
+                      <dd className="text-gray-900 dark:text-white">
+                        {metadata.series}{metadata.series_position && ` (Book ${metadata.series_position})`}
+                      </dd>
+                    </div>
+                  )}
+                  {metadata.pages && (
+                    <div>
+                      <dt className="font-medium text-gray-600 dark:text-gray-400">Pages</dt>
+                      <dd className="text-gray-900 dark:text-white">{metadata.pages.toLocaleString()}</dd>
+                    </div>
+                  )}
+                  {metadata.publisher && (
+                    <div>
+                      <dt className="font-medium text-gray-600 dark:text-gray-400">Publisher</dt>
+                      <dd className="text-gray-900 dark:text-white">{metadata.publisher}</dd>
+                    </div>
+                  )}
+                  {metadata.language && (
+                    <div>
+                      <dt className="font-medium text-gray-600 dark:text-gray-400">Language</dt>
+                      <dd className="text-gray-900 dark:text-white capitalize">{metadata.language}</dd>
+                    </div>
+                  )}
+                  {metadata.genres && metadata.genres.length > 0 && (
+                    <div>
+                      <dt className="font-medium text-gray-600 dark:text-gray-400">Genres</dt>
+                      <dd className="text-gray-900 dark:text-white">{metadata.genres.join(', ')}</dd>
+                    </div>
+                  )}
+                  {metadata.hardcover_id && (
+                    <div>
+                      <dt className="font-medium text-gray-600 dark:text-gray-400">Hardcover ID</dt>
+                      <dd className="text-gray-900 dark:text-white">{metadata.hardcover_id}</dd>
+                    </div>
+                  )}
+                </dl>
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-gray-400">No metadata available</p>
               )}
             </div>
 
@@ -185,24 +331,6 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* Additional Info */}
-            {(metadata?.publisher || metadata?.language) && (
-              <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
-                {metadata.publisher && (
-                  <div>
-                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Publisher</div>
-                    <div className="text-sm text-gray-900 dark:text-white">{metadata.publisher}</div>
-                  </div>
-                )}
-                {metadata.language && (
-                  <div>
-                    <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Language</div>
-                    <div className="text-sm text-gray-900 dark:text-white capitalize">{metadata.language}</div>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -273,26 +401,82 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
 
           {/* File Information */}
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-              <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-              File Information
-            </h2>
-            <dl className="grid md:grid-cols-2 gap-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">File Information</h2>
+            <dl className="space-y-3">
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Path</dt>
-                <dd className="text-sm text-gray-900 dark:text-white font-mono bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded break-all">
-                  {book.path}
-                </dd>
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Directory Name</dt>
+                <dd className="mt-1 text-sm text-gray-900 dark:text-white font-mono">{book.id}</dd>
               </div>
               <div>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Directory Name</dt>
-                <dd className="text-sm text-gray-900 dark:text-white font-mono bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded break-all">
-                  {book.id}
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">File Path</dt>
+                <dd className="mt-1 text-sm text-gray-900 dark:text-white font-mono break-all">{book.path}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
+                <dd className="mt-1">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                    Available
+                  </span>
                 </dd>
               </div>
             </dl>
+          </div>
+
+          {/* Directory Contents */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <button
+              onClick={toggleFiles}
+              className="w-full flex items-center justify-between text-xl font-semibold text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 transition-colors mb-4"
+            >
+              <span>Directory Contents</span>
+              <svg
+                className={`w-5 h-5 transition-transform ${filesExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {filesExpanded && (
+              <div className="space-y-1">
+                {loadingFiles ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 p-2">Loading files...</p>
+                ) : files.length > 0 ? (
+                  <div className="max-h-64 overflow-y-auto">
+                    {files.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          {file.isDirectory ? (
+                            <svg className="w-4 h-4 flex-shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                          <span className="text-sm text-gray-900 dark:text-white truncate font-mono">
+                            {file.name}
+                          </span>
+                        </div>
+                        {!file.isDirectory && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
+                            {formatBytes(file.size)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 p-2">No files found</p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* No Metadata Notice */}
