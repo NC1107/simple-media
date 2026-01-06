@@ -222,7 +222,7 @@ function App() {
           <Route path="/movies/:movieId" element={<MovieDetailWrapper />} />
 
           {/* Books hierarchical routes */}
-          <Route path="/books" element={<Books onBookSelect={(id) => navigate(`/books/${encodeURIComponent(id)}`, { state: { from: '/books' } })} />} />
+          <Route path="/books" element={<Books />} />
           <Route path="/books/authors/:authorId" element={<AuthorDetail />} />
           <Route path="/books/series/:seriesId" element={<SeriesDetail />} />
           <Route path="/books/:bookId" element={<BookDetailWrapper />} />
