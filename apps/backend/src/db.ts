@@ -1,8 +1,8 @@
 import { createClient } from '@libsql/client'
-import type { MediaItem, TVEpisode } from './types.js'
+import type { MediaItem, TVEpisode, Author, BookSeries, Book } from './types.js'
 
 // Re-export types for use by other modules
-export type { MediaItem, TVEpisode }
+export type { MediaItem, TVEpisode, Author, BookSeries, Book }
 
 interface Database {
   db: any
@@ -59,10 +59,55 @@ export async function initDatabase(dbPath: string): Promise<Database> {
       value TEXT NOT NULL
     )
   `)
-  
+
+  // Create books hierarchy tables
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS authors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      metadata_json TEXT,
+      created_at INTEGER NOT NULL,
+      last_scanned INTEGER NOT NULL
+    )
+  `)
+
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS book_series (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      author_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      metadata_json TEXT,
+      created_at INTEGER NOT NULL,
+      last_scanned INTEGER NOT NULL,
+      FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE,
+      UNIQUE(author_id, name)
+    )
+  `)
+
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS books (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      series_id INTEGER,
+      author_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      type TEXT NOT NULL,
+      path TEXT NOT NULL UNIQUE,
+      file_size INTEGER,
+      last_scanned INTEGER NOT NULL,
+      metadata_json TEXT,
+      FOREIGN KEY (series_id) REFERENCES book_series(id) ON DELETE SET NULL,
+      FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE
+    )
+  `)
+
   // Create indexes
   await client.execute('CREATE INDEX IF NOT EXISTS idx_media_type ON media_items(type)')
   await client.execute('CREATE INDEX IF NOT EXISTS idx_tv_episodes_show ON tv_episodes(show_id)')
+  await client.execute('CREATE INDEX IF NOT EXISTS idx_authors_name ON authors(name)')
+  await client.execute('CREATE INDEX IF NOT EXISTS idx_series_author ON book_series(author_id)')
+  await client.execute('CREATE INDEX IF NOT EXISTS idx_books_series ON books(series_id)')
+  await client.execute('CREATE INDEX IF NOT EXISTS idx_books_author ON books(author_id)')
+  await client.execute('CREATE INDEX IF NOT EXISTS idx_books_type ON books(type)')
   
   // Initialize default settings
   await client.execute(`
@@ -248,4 +293,344 @@ export async function cleanupInvalidSettings(): Promise<number> {
     args: []
   })
   return result.rowsAffected || 0
+}
+
+// =============================================================================
+// Authors CRUD functions
+// =============================================================================
+
+export async function insertAuthor(author: Author): Promise<number> {
+  const database = getDatabase()
+
+  const existing = await getAuthorByName(author.name)
+
+  if (existing) {
+    await database.db.execute({
+      sql: `UPDATE authors SET last_scanned = ?, metadata_json = ?
+            WHERE id = ?`,
+      args: [author.last_scanned, author.metadata_json || null, existing.id]
+    })
+    return existing.id as number
+  } else {
+    const result = await database.db.execute({
+      sql: `INSERT INTO authors (name, metadata_json, created_at, last_scanned)
+            VALUES (?, ?, ?, ?)`,
+      args: [author.name, author.metadata_json || null, author.created_at, author.last_scanned]
+    })
+    return result.lastInsertRowid as number
+  }
+}
+
+export async function getAuthorByName(name: string): Promise<Author | null> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT * FROM authors WHERE name = ?',
+    args: [name]
+  })
+  return result.rows[0] as Author || null
+}
+
+export async function getAuthorById(id: number): Promise<Author | null> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT * FROM authors WHERE id = ?',
+    args: [id]
+  })
+  return result.rows[0] as Author || null
+}
+
+export async function updateAuthorMetadata(id: number, metadataJson: string | null): Promise<void> {
+  const database = getDatabase()
+  await database.db.execute({
+    sql: 'UPDATE authors SET metadata_json = ?, last_scanned = ? WHERE id = ?',
+    args: [metadataJson, Date.now(), id]
+  })
+}
+
+export async function getAllAuthors(): Promise<Author[]> {
+  const database = getDatabase()
+  const result = await database.db.execute('SELECT * FROM authors ORDER BY name')
+  return result.rows as Author[]
+}
+
+export async function updateAuthorLastScanned(id: number, timestamp: number): Promise<void> {
+  const database = getDatabase()
+  await database.db.execute({
+    sql: 'UPDATE authors SET last_scanned = ? WHERE id = ?',
+    args: [timestamp, id]
+  })
+}
+
+export async function deleteAuthor(id: number): Promise<void> {
+  const database = getDatabase()
+  await database.db.execute({
+    sql: 'DELETE FROM authors WHERE id = ?',
+    args: [id]
+  })
+}
+
+// =============================================================================
+// Book Series CRUD functions
+// =============================================================================
+
+export async function insertSeries(series: BookSeries): Promise<number> {
+  const database = getDatabase()
+
+  const existing = await getSeriesByAuthorAndName(series.author_id, series.name)
+
+  if (existing) {
+    await database.db.execute({
+      sql: `UPDATE book_series SET last_scanned = ?, metadata_json = ?
+            WHERE id = ?`,
+      args: [series.last_scanned, series.metadata_json || null, existing.id]
+    })
+    return existing.id as number
+  } else {
+    const result = await database.db.execute({
+      sql: `INSERT INTO book_series (author_id, name, metadata_json, created_at, last_scanned)
+            VALUES (?, ?, ?, ?, ?)`,
+      args: [series.author_id, series.name, series.metadata_json || null, series.created_at, series.last_scanned]
+    })
+    return result.lastInsertRowid as number
+  }
+}
+
+export async function getSeriesByAuthorAndName(authorId: number, name: string): Promise<BookSeries | null> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT * FROM book_series WHERE author_id = ? AND name = ?',
+    args: [authorId, name]
+  })
+  return result.rows[0] as BookSeries || null
+}
+
+export async function getSeriesById(id: number): Promise<BookSeries | null> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT * FROM book_series WHERE id = ?',
+    args: [id]
+  })
+  return result.rows[0] as BookSeries || null
+}
+
+export async function getSeriesByAuthor(authorId: number): Promise<BookSeries[]> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT * FROM book_series WHERE author_id = ? ORDER BY name',
+    args: [authorId]
+  })
+  return result.rows as BookSeries[]
+}
+
+export async function updateSeriesLastScanned(id: number, timestamp: number): Promise<void> {
+  const database = getDatabase()
+  await database.db.execute({
+    sql: 'UPDATE book_series SET last_scanned = ? WHERE id = ?',
+    args: [timestamp, id]
+  })
+}
+
+export async function deleteSeries(id: number): Promise<void> {
+  const database = getDatabase()
+  await database.db.execute({
+    sql: 'DELETE FROM book_series WHERE id = ?',
+    args: [id]
+  })
+}
+
+// =============================================================================
+// Books CRUD functions
+// =============================================================================
+
+export async function insertBook(book: Book): Promise<number> {
+  const database = getDatabase()
+
+  const existing = await getBookByPath(book.path)
+
+  if (existing) {
+    if (book.metadata_json !== undefined) {
+      await database.db.execute({
+        sql: `UPDATE books SET series_id = ?, author_id = ?, title = ?, type = ?,
+              file_size = ?, last_scanned = ?, metadata_json = ?
+              WHERE id = ?`,
+        args: [book.series_id || null, book.author_id, book.title, book.type,
+               book.file_size || null, book.last_scanned, book.metadata_json, existing.id]
+      })
+    } else {
+      await database.db.execute({
+        sql: `UPDATE books SET series_id = ?, author_id = ?, title = ?, type = ?,
+              file_size = ?, last_scanned = ?
+              WHERE id = ?`,
+        args: [book.series_id || null, book.author_id, book.title, book.type,
+               book.file_size || null, book.last_scanned, existing.id]
+      })
+    }
+    return existing.id as number
+  } else {
+    const result = await database.db.execute({
+      sql: `INSERT INTO books (series_id, author_id, title, type, path, file_size, last_scanned, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [book.series_id || null, book.author_id, book.title, book.type, book.path,
+             book.file_size || null, book.last_scanned, book.metadata_json || null]
+    })
+    return result.lastInsertRowid as number
+  }
+}
+
+export async function getBookByPath(path: string): Promise<Book | null> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT * FROM books WHERE path = ?',
+    args: [path]
+  })
+  return result.rows[0] as Book || null
+}
+
+export async function getBookById(id: number): Promise<Book | null> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT * FROM books WHERE id = ?',
+    args: [id]
+  })
+  return result.rows[0] as Book || null
+}
+
+export async function getBooksBySeriesId(seriesId: number): Promise<Book[]> {
+  const database = getDatabase()
+  const result = await database.db.execute({
+    sql: 'SELECT * FROM books WHERE series_id = ? ORDER BY title',
+    args: [seriesId]
+  })
+  return result.rows as Book[]
+}
+
+export async function getBooksByAuthorId(authorId: number, standaloneOnly: boolean = false): Promise<Book[]> {
+  const database = getDatabase()
+  const sql = standaloneOnly
+    ? 'SELECT * FROM books WHERE author_id = ? AND series_id IS NULL ORDER BY title'
+    : 'SELECT * FROM books WHERE author_id = ? ORDER BY title'
+  const result = await database.db.execute({
+    sql,
+    args: [authorId]
+  })
+  return result.rows as Book[]
+}
+
+export async function getBooksByAuthorIdAndType(
+  authorId: number,
+  type: 'audiobook' | 'ebook',
+  standaloneOnly: boolean = false
+): Promise<Book[]> {
+  const database = getDatabase()
+
+  let sql = 'SELECT * FROM books WHERE author_id = ? AND type = ?'
+  const args: any[] = [authorId, type]
+
+  if (standaloneOnly) {
+    sql += ' AND series_id IS NULL'
+  }
+
+  sql += ' ORDER BY title'
+
+  const result = await database.db.execute({
+    sql,
+    args
+  })
+
+  return result.rows as Book[]
+}
+
+export async function getAllBooks(): Promise<Book[]> {
+  const database = getDatabase()
+  const result = await database.db.execute('SELECT * FROM books ORDER BY title')
+  return result.rows as Book[]
+}
+
+export async function updateBook(book: Book): Promise<void> {
+  const database = getDatabase()
+  if (book.metadata_json !== undefined) {
+    await database.db.execute({
+      sql: `UPDATE books SET series_id = ?, author_id = ?, title = ?, type = ?,
+            file_size = ?, last_scanned = ?, metadata_json = ?
+            WHERE id = ?`,
+      args: [book.series_id || null, book.author_id, book.title, book.type,
+             book.file_size || null, book.last_scanned, book.metadata_json, book.id]
+    })
+  } else {
+    await database.db.execute({
+      sql: `UPDATE books SET series_id = ?, author_id = ?, title = ?, type = ?,
+            file_size = ?, last_scanned = ?
+            WHERE id = ?`,
+      args: [book.series_id || null, book.author_id, book.title, book.type,
+             book.file_size || null, book.last_scanned, book.id]
+    })
+  }
+}
+
+export async function deleteBook(id: number): Promise<void> {
+  const database = getDatabase()
+  await database.db.execute({
+    sql: 'DELETE FROM books WHERE id = ?',
+    args: [id]
+  })
+}
+
+// =============================================================================
+// Books hierarchy helper functions
+// =============================================================================
+
+export async function getAuthorWithCounts(authorId: number): Promise<{ author: Author; bookCount: number; seriesCount: number } | null> {
+  const author = await getAuthorById(authorId)
+  if (!author) return null
+
+  const database = getDatabase()
+
+  const bookCountResult = await database.db.execute({
+    sql: 'SELECT COUNT(*) as count FROM books WHERE author_id = ?',
+    args: [authorId]
+  })
+  const bookCount = bookCountResult.rows[0]?.count || 0
+
+  const seriesCountResult = await database.db.execute({
+    sql: 'SELECT COUNT(*) as count FROM book_series WHERE author_id = ?',
+    args: [authorId]
+  })
+  const seriesCount = seriesCountResult.rows[0]?.count || 0
+
+  return { author, bookCount, seriesCount }
+}
+
+export async function getAllAuthorsWithCounts(): Promise<Array<{ id: number; name: string; bookCount: number; seriesCount: number; metadata_json?: string | null }>> {
+  const database = getDatabase()
+  const result = await database.db.execute(`
+    SELECT
+      a.id,
+      a.name,
+      a.metadata_json,
+      COUNT(DISTINCT b.id) as bookCount,
+      COUNT(DISTINCT s.id) as seriesCount
+    FROM authors a
+    LEFT JOIN books b ON a.id = b.author_id
+    LEFT JOIN book_series s ON a.id = s.author_id
+    GROUP BY a.id, a.name
+    ORDER BY a.name
+  `)
+  return result.rows as Array<{ id: number; name: string; bookCount: number; seriesCount: number }>
+}
+
+export async function getSeriesWithBookCount(seriesId: number): Promise<{ series: BookSeries; bookCount: number; authorName: string } | null> {
+  const series = await getSeriesById(seriesId)
+  if (!series) return null
+
+  const author = await getAuthorById(series.author_id)
+  if (!author) return null
+
+  const database = getDatabase()
+  const bookCountResult = await database.db.execute({
+    sql: 'SELECT COUNT(*) as count FROM books WHERE series_id = ?',
+    args: [seriesId]
+  })
+  const bookCount = bookCountResult.rows[0]?.count || 0
+
+  return { series, bookCount, authorName: author.name }
 }

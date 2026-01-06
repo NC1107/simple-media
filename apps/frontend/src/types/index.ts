@@ -80,12 +80,75 @@ export interface Episode {
   metadata_json?: string
 }
 
-// Books
+// Book Metadata
+export interface BookMetadata {
+  hardcover_id: number
+  title: string
+  subtitle: string | null
+  description: string | null
+  authors: string[]
+  series: string | null
+  series_position: number | null
+  pages: number | null
+  isbn_10: string | null
+  isbn_13: string | null
+  release_date: string | null
+  cover_url: string | null
+  publisher: string | null
+  language: string | null
+  genres: string[]
+}
+
+// Authors
+export interface Author {
+  id: number
+  name: string
+  bookCount: number
+  seriesCount: number
+  imageUrl?: string | null
+  metadata?: {
+    image_url?: string | null
+    description?: string | null
+  } | null
+}
+
+// Series
+export interface BookSeries {
+  id: number
+  name: string
+  bookCount: number
+  authorName: string
+  coverUrl?: string | null
+}
+
+// Books (NEW hierarchical structure)
 export interface Book {
+  id: string
+  title: string
+  type: 'audiobook' | 'ebook'
+  path: string
+  fileSize?: number
+  coverUrl?: string | null
+  metadata?: BookMetadata | null
+  author?: {
+    id: number
+    name: string
+  }
+  series?: {
+    id: number
+    name: string
+  } | null
+}
+
+// Legacy Book (for backwards compatibility during migration)
+export interface LegacyBook {
   id: string
   name: string
   path: string
   fileSize?: number
+  type?: 'audiobook' | 'ebook'
+  coverUrl?: string | null
+  metadata?: BookMetadata | null
 }
 
 // =============================================================================
@@ -108,6 +171,23 @@ export interface BooksResponse {
   books: Book[]
   total: number
   message?: string
+}
+
+export interface AuthorsResponse {
+  authors: Author[]
+  total: number
+}
+
+export interface SeriesResponse {
+  series: BookSeries[]
+  total: number
+}
+
+export interface SeriesBooksResponse {
+  books: Book[]
+  total: number
+  seriesName: string
+  authorName: string
 }
 
 // =============================================================================

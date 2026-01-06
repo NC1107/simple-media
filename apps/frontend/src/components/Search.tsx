@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 interface SearchResult {
   id: number
-  type: 'tv_show' | 'movie' | 'audiobook' | 'ebook'
+  type: 'tv_show' | 'movie' | 'audiobook' | 'ebook' | 'author'
   title: string
   path: string
   metadata?: any
@@ -70,6 +70,8 @@ export default function Search() {
       navigate(`/movies/${encodeURIComponent(result.id.toString())}`)
     } else if (result.type === 'audiobook' || result.type === 'ebook') {
       navigate(`/books/${encodeURIComponent(result.id.toString())}`)
+    } else if (result.type === 'author') {
+      navigate(`/books/authors/${result.id}`)
     }
   }
 
@@ -80,6 +82,8 @@ export default function Search() {
       return result.metadata.poster_url
     } else if (result.type === 'audiobook' || result.type === 'ebook') {
       return result.metadata.cover_url
+    } else if (result.type === 'author') {
+      return result.metadata.image_url
     }
     
     return null
@@ -111,6 +115,12 @@ export default function Search() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         )
+      case 'author':
+        return (
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        )
       default:
         return null
     }
@@ -122,6 +132,7 @@ export default function Search() {
       case 'movie': return 'Movie'
       case 'audiobook': return 'Audiobook'
       case 'ebook': return 'E-Book'
+      case 'author': return 'Author'
       default: return type
     }
   }
@@ -133,7 +144,7 @@ export default function Search() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search movies, TV shows, books..."
+          placeholder="Search movies, TV shows, books, authors..."
           className="w-full px-4 py-2 pl-10 pr-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
         />
         <svg

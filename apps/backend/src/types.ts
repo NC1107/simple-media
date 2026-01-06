@@ -26,6 +26,35 @@ export interface TVEpisode {
   metadata_json?: string
 }
 
+export interface Author {
+  id?: number
+  name: string
+  metadata_json?: string
+  created_at: number
+  last_scanned: number
+}
+
+export interface BookSeries {
+  id?: number
+  author_id: number
+  name: string
+  metadata_json?: string
+  created_at: number
+  last_scanned: number
+}
+
+export interface Book {
+  id?: number
+  series_id?: number
+  author_id: number
+  title: string
+  type: 'audiobook' | 'ebook'
+  path: string
+  file_size?: number
+  last_scanned: number
+  metadata_json?: string
+}
+
 // =============================================================================
 // Metadata Types (returned by TMDB/TVDB APIs, stored in metadata_json)
 // =============================================================================

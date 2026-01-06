@@ -148,7 +148,14 @@ export default function MovieDetail({ movieId, onBack }: MovieDetailProps) {
               <div className="space-y-2 text-xs">
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">TMDB ID:</span>
-                  <span className="ml-2 text-gray-900 dark:text-white">{metadata.tmdb_id}</span>
+                  <a 
+                    href={`https://www.themoviedb.org/movie/${metadata.tmdb_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-2 text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {metadata.tmdb_id}
+                  </a>
                 </div>
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">Rating:</span>

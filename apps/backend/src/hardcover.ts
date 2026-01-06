@@ -106,6 +106,59 @@ import type { BookMetadata } from './types.js'
 
 export type { BookMetadata }
 
+export interface AuthorMetadata {
+  image_url?: string | null
+  description?: string | null
+}
+
+export async function fetchAuthorImage(name: string): Promise<AuthorMetadata | null> {
+  if (!HARDCOVER_API_KEY) {
+    return null
+  }
+
+  try {
+    const query = `
+      query SearchAuthors($query: String!, $perPage: Int!) {
+        search(
+          query: $query,
+          query_type: "Author",
+          fields: "name",
+          weights: "5",
+          per_page: $perPage
+        ) {
+          results
+        }
+      }
+    `
+
+    const response = await rateLimitedGraphQLFetch(query, 'SearchAuthors', {
+      query: name,
+      perPage: 5
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const result = await response.json() as any
+    if (result.errors || !result.data?.search?.results?.hits?.length) {
+      return null
+    }
+
+    const hits = result.data.search.results.hits
+    const exact = hits.find((hit: any) => hit.document?.name?.toLowerCase() === name.toLowerCase()) || hits[0]
+    const doc = exact.document
+
+    return {
+      image_url: doc?.image?.url || doc?.portrait_image_url || doc?.photo_url || null,
+      description: doc?.bio || null
+    }
+  } catch (error) {
+    console.error('Error searching Hardcover authors:', error)
+    return null
+  }
+}
+
 export async function searchBook(title: string, author?: string): Promise<BookMetadata | null> {
   if (!HARDCOVER_API_KEY) {
     console.log('Hardcover API key not configured, skipping metadata fetch')
@@ -124,8 +177,8 @@ export async function searchBook(title: string, author?: string): Promise<BookMe
         search(
           query: $query, 
           query_type: "Book", 
-          fields: "title,alternative_titles", 
-          weights: "5,1", 
+          fields: "title,alternative_titles,author_names", 
+          weights: "5,1,3", 
           per_page: $perPage
         ) {
           results
@@ -133,11 +186,11 @@ export async function searchBook(title: string, author?: string): Promise<BookMe
       }
     `
     
-    console.log(`Searching Hardcover for: "${searchQuery}"`)
+    console.log(`Searching Hardcover for: "${searchQuery}"${author ? ` (filtering by author: "${author}")` : ''}`)
     
     const response = await rateLimitedGraphQLFetch(query, 'SearchBooks', { 
       query: searchQuery,
-      perPage: 5
+      perPage: 10
     })
     
     console.log('[Hardcover Search] Response status:', response.status)
@@ -149,7 +202,6 @@ export async function searchBook(title: string, author?: string): Promise<BookMe
     }
 
     const result = await response.json() as any
-    console.log('[Hardcover Search] Response data:', JSON.stringify(result, null, 2))
     
     if (result.errors) {
       console.error('GraphQL errors:', result.errors)
@@ -161,10 +213,80 @@ export async function searchBook(title: string, author?: string): Promise<BookMe
       return null
     }
 
-    // Get the first result (best match by score)
-    // Note: Search results contain MORE data than the details endpoint
-    // (genres, ISBNs, publisher, language are only in search)
-    const book = result.data.search.results.hits[0].document
+    // If author was provided, find the best matching result
+    let book = null
+    if (author) {
+      const hits = result.data.search.results.hits
+      console.log(`Looking for book by author: "${author}" (found ${hits.length} results)`)
+      
+      // Filter out supplementary materials
+      const supplementaryKeywords = ['annotation', 'study guide', 'summary', 'analysis', 'companion', 'notes', 'overview', 'recap']
+      const collectionKeywords = ['trilogy', 'collection', 'boxset', 'box set', 'omnibus', 'complete', 'series bundle']
+      
+      // Extract meaningful words from the search title (ignore common words)
+      const searchTitleWords = title.toLowerCase()
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !['the', 'and', 'book', 'vol', 'part'].includes(w))
+      
+      let candidates = []
+      
+      for (const hit of hits) {
+        const bookAuthors = hit.document.author_names || []
+        const bookTitle = hit.document.title.toLowerCase()
+        
+        // Check if title contains supplementary keywords
+        const isSupplementary = supplementaryKeywords.some(keyword => bookTitle.includes(keyword))
+        
+        if (isSupplementary) {
+          console.log(`  Result: "${hit.document.title}" by [${bookAuthors.join(', ')}] (supplementary - skipping)`)
+          continue
+        }
+        
+        // Check if any of the book's authors match
+        const authorMatch = bookAuthors.some((bookAuthor: string) => {
+          const authorLower = author.toLowerCase()
+          const bookAuthorLower = bookAuthor.toLowerCase()
+          return authorLower.includes(bookAuthorLower) || bookAuthorLower.includes(authorLower)
+        })
+        
+        if (!authorMatch) {
+          continue
+        }
+        
+        // Score this candidate
+        const bookTitleWords = bookTitle.replace(/[^\w\s]/g, ' ').split(/\s+/)
+        const wordOverlap = searchTitleWords.filter(w => bookTitleWords.includes(w)).length
+        const isCollection = collectionKeywords.some(keyword => bookTitle.includes(keyword))
+        
+        // Check for very close title match (most words match)
+        const titleMatchRatio = searchTitleWords.length > 0 ? wordOverlap / searchTitleWords.length : 0
+        const isCloseMatch = titleMatchRatio >= 0.7
+        
+        // If it's a close title match, don't penalize collections as heavily
+        // This handles cases like "Arcanum Unbounded" which IS a collection but is the correct match
+        const collectionPenalty = isCloseMatch ? 0 : (isCollection ? 5 : 0)
+        
+        const score = wordOverlap - collectionPenalty
+        
+        candidates.push({ hit, score, isCollection, titleMatchRatio })
+        console.log(`  Result: "${hit.document.title}" by [${bookAuthors.join(', ')}] (score: ${score}, match: ${(titleMatchRatio * 100).toFixed(0)}%${isCollection ? ', collection' : ''})`)
+      }
+      
+      if (candidates.length === 0) {
+        console.log(`✗ No results matched author "${author}" (excluding supplementary materials)`)
+        return null
+      }
+      
+      // Sort by score descending and pick the best
+      candidates.sort((a, b) => b.score - a.score)
+      book = candidates[0].hit.document
+      console.log(`  → Selected: "${book.title}" by ${book.author_names.join(', ')}`)
+    } else {
+      // No author filter, use first result
+      console.log('No author filter provided, using first result')
+      book = result.data.search.results.hits[0].document
+    }
     
     // Extract author names
     const authors = book.author_names || []

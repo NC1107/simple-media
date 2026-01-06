@@ -27,10 +27,13 @@ interface BookMetadata {
 
 interface BookData {
   id: string
-  name: string
+  title: string
   path: string
   type?: string
   fileSize?: number
+  author?: { id?: number; name?: string } | null
+  series?: { id: number; name: string } | null
+  coverUrl?: string | null
   metadata?: BookMetadata | null
 }
 
@@ -56,12 +59,26 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
 
   const fetchBookDetails = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/books`)
+      const response = await fetch(`${API_BASE_URL}/api/books/${encodeURIComponent(bookId)}`)
+      if (!response.ok) {
+        setBook(null)
+        return
+      }
       const data = await response.json()
-      const foundBook = data.books.find((b: BookData) => b.id === bookId)
-      setBook(foundBook || null)
+      setBook({
+        id: data.id,
+        title: data.title,
+        path: data.path,
+        type: data.type,
+        fileSize: data.fileSize,
+        author: data.author,
+        series: data.series,
+        coverUrl: data.coverUrl,
+        metadata: data.metadata || null
+      })
     } catch (err) {
       console.error(err)
+      setBook(null)
     } finally {
       setLoading(false)
     }
@@ -103,10 +120,10 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
       // Update book state with new metadata
       setBook(prev => prev ? { ...prev, metadata: result.metadata } : null)
 
-      showToast(`Metadata fetched for ${result.metadata.title || book.name}`, 'success')
+      showToast(`Metadata fetched for ${result.metadata.title || book.title}`, 'success')
     } catch (error: any) {
       console.error('Failed to fetch metadata:', error)
-      showToast(error.message || `Failed to fetch metadata for ${book.name}`, 'error')
+      showToast(error.message || `Failed to fetch metadata for ${book.title}`, 'error')
     } finally {
       setFetchingMetadata(false)
     }
@@ -127,13 +144,13 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
 
       await response.json()
 
-      // Clear metadata from state
-      setBook(prev => prev ? { ...prev, metadata: null } : null)
+      // Refresh book data to ensure it's cleared
+      await fetchBookDetails()
 
-      showToast(`Metadata cleared for ${book.name}`, 'success')
+      showToast(`Metadata cleared for ${book.title}`, 'success')
     } catch (error) {
       console.error('Failed to clear metadata:', error)
-      showToast(`Failed to clear metadata for ${book.name}`, 'error')
+      showToast(`Failed to clear metadata for ${book.title}`, 'error')
     } finally {
       setClearingMetadata(false)
     }
@@ -212,7 +229,7 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
               {metadata?.cover_url ? (
                 <img 
                   src={metadata.cover_url} 
-                  alt={metadata.title || book.name}
+                  alt={metadata.title || book.title}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -303,8 +320,17 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
                   )}
                   {metadata.hardcover_id && (
                     <div>
-                      <dt className="font-medium text-gray-600 dark:text-gray-400">Hardcover ID</dt>
-                      <dd className="text-gray-900 dark:text-white">{metadata.hardcover_id}</dd>
+                      <dt className="font-medium text-gray-600 dark:text-gray-400">Hardcover</dt>
+                      <dd className="text-gray-900 dark:text-white">
+                        <a 
+                          href={`https://hardcover.app/books/${metadata.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          View on Hardcover
+                        </a>
+                      </dd>
                     </div>
                   )}
                 </dl>
@@ -341,7 +367,7 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
           {/* Title & Author */}
           <div>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-              {metadata?.title || book.name}
+              {metadata?.title || book.title}
             </h1>
             {metadata?.subtitle && (
               <p className="text-xl text-gray-600 dark:text-gray-400 mb-4 italic">{metadata.subtitle}</p>

@@ -25,3 +25,19 @@ export function resolveImageUrl(
   // Show/movie poster
   return `${API_BASE_URL}/api/images/tv/${encodeURIComponent(mediaPath)}/${imagePath}`
 }
+
+/**
+ * Simple image URL getter for books and other media
+ * Returns the URL as-is if it's already a full URL, otherwise returns it
+ */
+export function getImageUrl(imageUrl: string | null | undefined): string | undefined {
+  if (!imageUrl) return undefined
+
+  // If it's already a full URL, return as-is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl
+  }
+
+  // For local paths, return as-is (books API returns full URLs or local paths)
+  return imageUrl
+}

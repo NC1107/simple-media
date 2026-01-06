@@ -360,7 +360,16 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
                 )}
                 <div>
                   <dt className="font-medium text-gray-600 dark:text-gray-400">TVDB ID</dt>
-                  <dd className="text-gray-900 dark:text-white">{metadata.tvdb_id}</dd>
+                  <dd className="text-gray-900 dark:text-white">
+                    <a 
+                      href={`https://www.thetvdb.com/dereferrer/series/${metadata.tvdb_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {metadata.tvdb_id}
+                    </a>
+                  </dd>
                 </div>
               </dl>
             ) : (
@@ -597,7 +606,16 @@ export default function TVShowDetail({ showId, onBack }: TVShowDetailProps) {
                       {episodeMetadata?.tvdb_id && (
                         <div>
                           <dt className="font-medium text-gray-500 dark:text-gray-400">TVDB ID</dt>
-                          <dd className="text-gray-900 dark:text-white mt-1">{episodeMetadata.tvdb_id}</dd>
+                          <dd className="text-gray-900 dark:text-white mt-1">
+                            <a 
+                              href={`https://www.thetvdb.com/dereferrer/episode/${episodeMetadata.tvdb_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              {episodeMetadata.tvdb_id}
+                            </a>
+                          </dd>
                         </div>
                       )}
                     </dl>
