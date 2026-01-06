@@ -123,7 +123,7 @@ export async function bookRoutes(fastify: FastifyInstance) {
         path: book.path,
         file_size: book.file_size,
         last_scanned: Date.now(),
-        metadata_json: null
+        metadata_json: undefined
       })
 
       return {
@@ -179,7 +179,7 @@ export async function bookRoutes(fastify: FastifyInstance) {
           path: book.path
         }
       } catch (err) {
-        fastify.log.error(`Failed to read directory: ${bookDirPath}`, err)
+        fastify.log.error(err as Error, `Failed to read directory: ${bookDirPath}`)
         return reply.status(404).send({ error: 'Book directory not found or inaccessible' })
       }
     } catch (error) {
