@@ -125,7 +125,7 @@ export default function BookDetail({ bookId, onBack }: BookDetailProps) {
         throw new Error('Failed to clear metadata')
       }
 
-      const result = await response.json()
+      await response.json()
 
       // Clear metadata from state
       setBook(prev => prev ? { ...prev, metadata: null } : null)
