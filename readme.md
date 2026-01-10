@@ -11,7 +11,7 @@ Currently this is basically a glorified media scanner with metadata fetching and
 - Show library statistics on the dashboard (total items, disk usage, recently added stuff)
 - Track watch/read progress so you know what you've actually watched or read
 
-After that, probably add more settings people expect, in-app metadata editing, maybe automatic file organization and renaming.
+After that, probably add more settings people expect, in-app metadata editing, maybe automatic file organization and renaming
 
 ## Screenshots
 
